@@ -5,6 +5,7 @@ module.exports = {
   packagerConfig: {
     asar: true,
     extraResource: ['src/bin'],
+    icon: 'images/icon',
   },
   rebuildConfig: {},
   makers: [

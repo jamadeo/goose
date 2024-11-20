@@ -7,16 +7,20 @@ mod commands {
 mod inputs;
 mod profile;
 mod prompt;
-mod session;
+mod session {
+    pub mod message_serialize;
+    pub mod session;
+    pub mod session_file;
+}
 mod systems;
 
 use anyhow::Result;
 use clap::{Parser, Subcommand};
 
+use crate::systems::system_handler::{add_system, remove_system};
 use commands::configure::handle_configure;
 use commands::session::build_session;
 use commands::version::print_version;
-use crate::systems::system_handler::{add_system, remove_system};
 
 #[derive(Parser)]
 #[command(author, about, long_about = None)]
@@ -114,18 +118,16 @@ async fn main() -> Result<()> {
             let _ = handle_configure(profile_name).await;
             return Ok(());
         }
-        Some(Command::System { action }) => {
-            match action {
-                SystemCommands::Add { url } => {
-                    add_system(url).await.unwrap();
-                    return Ok(());
-                }
-                SystemCommands::Remove { url } => {
-                    remove_system(url).await.unwrap();
-                    return Ok(());
-                }
+        Some(Command::System { action }) => match action {
+            SystemCommands::Add { url } => {
+                add_system(url).await.unwrap();
+                return Ok(());
             }
-        }
+            SystemCommands::Remove { url } => {
+                remove_system(url).await.unwrap();
+                return Ok(());
+            }
+        },
         Some(Command::Session { session, profile }) => {
             let mut session = build_session(session, profile);
             let _ = session.start().await;

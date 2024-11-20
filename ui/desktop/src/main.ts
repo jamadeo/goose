@@ -54,6 +54,7 @@ const createWindow = () => {
     trafficLightPosition: { x: 16, y: 18 },
     width: 1024,
     height: 768,
+    icon: path.join(__dirname, '../images/icon.png'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
     },

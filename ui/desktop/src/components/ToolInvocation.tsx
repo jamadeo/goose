@@ -6,7 +6,7 @@ import ReactMarkdown from 'react-markdown'
 
 export default function ToolInvocation({ toolInvocation }) {
   return (
-    <div key={toolInvocation.toolCallId} className="text-tool space-y-4 transition-all duration-300">
+    <div key={toolInvocation.toolCallId} className="w-full text-tool space-y-4 transition-all duration-300">
       <ToolCall call={toolInvocation} />
       {toolInvocation.state === 'result' && <ToolResult result={toolInvocation} />}
     </div>
@@ -75,27 +75,7 @@ function ToolResult({ result }: ToolResultProps) {
               <div key={index} className="mb-2">
                 {item.type === 'text' && item.text && (
                   <ReactMarkdown
-                    className="text-tool-result-green whitespace-pre-wrap"
-                    components={{
-                      code({ node, className, children, ...props }) {
-                        return (
-                          <code className={className} {...props}>
-                            {typeof children === 'string' ? children : "Unrenderable tool result - check logs"}
-                          </code>
-                        )
-                      },
-                      pre({ children }) {
-                        return <div className="whitespace-pre overflow-x-auto">
-                          {typeof children === 'string' ? children : "Unrenderable tool result - check logs"}
-                        </div>
-                      },
-                      p({ children }) {
-                        return <div>
-                          {typeof children === 'string' ? children : "Unrenderable tool result - check logs"}
-                        </div>
-                      }
-                    }}
-                  >
+                    className="text-tool-result-green whitespace-pre-wrap">
                     {item.text}
                   </ReactMarkdown>
                 )}
@@ -125,7 +105,7 @@ function ToolResult({ result }: ToolResultProps) {
                 )
               },
               pre({ children }) {
-                return <div className="whitespace-pre overflow-x-auto">
+                return <div className="overflow-x-auto">
                   {typeof children === 'string' ? children : "Unrenderable tool result - check logs"}
                 </div>
               },

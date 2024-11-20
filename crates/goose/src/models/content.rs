@@ -1,20 +1,20 @@
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all="camelCase")]
+#[serde(rename_all = "camelCase")]
 pub struct TextContent {
     pub text: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all="camelCase")]
+#[serde(rename_all = "camelCase")]
 pub struct ImageContent {
     pub data: String,
     pub mime_type: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(tag = "type", rename_all="camelCase")]
+#[serde(tag = "type", rename_all = "camelCase")]
 /// Content passed to or from an LLM
 pub enum Content {
     Text(TextContent),

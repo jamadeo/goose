@@ -13,6 +13,12 @@ const GPT_4O_TOKENIZER_KEY: &str = "Xenova--gpt-4o";
 const CLAUDE_TOKENIZER_KEY: &str = "Xenova--claude-tokenizer";
 const QWEN_TOKENIZER_KEY: &str = "Qwen--Qwen2.5-Coder-32B-Instruct";
 
+impl Default for TokenCounter {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl TokenCounter {
     fn load_tokenizer(&mut self, tokenizer_key: &str) {
         // Load from embedded tokenizer files. The tokenizer_key must match the directory name.

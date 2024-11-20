@@ -34,8 +34,9 @@ pub struct Input {
 }
 
 pub enum InputType {
-    Message, // User sent a message
-    Exit,    // User wants to exit the session
+    AskAgain, // Ask the user for input again. Control flow command.
+    Message,  // User sent a message
+    Exit,     // User wants to exit the session
 }
 
 pub enum Theme {

@@ -92,9 +92,6 @@ impl Prompt for CliclackPrompt {
             Theme::Dark => "zenburn",
         };
 
-        // Currently tool usages seem to be coming back as User messages, is that right?
-        // if message.role == goose::providers::types::message::Role::Assistant
-
         for message_content in &message.content {
             match message_content {
                 MessageContent::Text(text) => print(&text.text, theme),
@@ -151,21 +148,39 @@ impl Prompt for CliclackPrompt {
             InputMode::Multiline => input = input.multiline(),
             InputMode::Singleline => (),
         }
-        let mut message_text: String = input.interact()?;
+        let mut message_text: String = match input.interact() {
+            Ok(text) => text,
+            Err(e) => {
+                eprintln!("Error getting input: {}", e);
+                println!("If you are trying to exit use /exit");
+                return Ok(Input {
+                    input_type: InputType::AskAgain,
+                    content: None,
+                });
+            }
+        };
         message_text = message_text.trim().to_string();
 
         if message_text.eq_ignore_ascii_case("/exit") || message_text.eq_ignore_ascii_case("/quit")
         {
-            return Ok(Input {
+            Ok(Input {
                 input_type: InputType::Exit,
                 content: None,
-            });
+            })
         } else if message_text.eq_ignore_ascii_case("/m") {
+            println!("Switching to Multiline input mode");
             self.input_mode = InputMode::Multiline;
-            return self.get_input();
+            return Ok(Input {
+                input_type: InputType::AskAgain,
+                content: None,
+            });
         } else if message_text.eq_ignore_ascii_case("/s") {
+            println!("Switching to Singleline input mode");
             self.input_mode = InputMode::Singleline;
-            return self.get_input();
+            return Ok(Input {
+                input_type: InputType::AskAgain,
+                content: None,
+            });
         } else if message_text.eq_ignore_ascii_case("/t") {
             self.theme = match self.theme {
                 Theme::Light => {
@@ -177,7 +192,10 @@ impl Prompt for CliclackPrompt {
                     Theme::Light
                 }
             };
-            return self.get_input();
+            return Ok(Input {
+                input_type: InputType::AskAgain,
+                content: None,
+            });
         } else if message_text.eq_ignore_ascii_case("/?") {
             println!("Commands:");
             println!("/exit - Exit the session");
@@ -186,7 +204,10 @@ impl Prompt for CliclackPrompt {
             println!("/t - Toggle Light/Dark theme");
             println!("/? - Display this help message");
             println!("Ctrl+C - Interrupt goose (resets the interaction to before the interrupted user request)");
-            return self.get_input();
+            return Ok(Input {
+                input_type: InputType::AskAgain,
+                content: None,
+            });
         } else {
             return Ok(Input {
                 input_type: InputType::Message,
@@ -232,6 +253,6 @@ impl CliclackTheme for PromptTheme {
             _ => message,
         };
 
-        Wrapper(self).format_footer_with_message(state, &new_message)
+        Wrapper(self).format_footer_with_message(state, new_message)
     }
 }

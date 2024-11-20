@@ -16,7 +16,5 @@ pub fn get_env_value_or_input(env_name: &str, input_prompt: &str, mask: bool) ->
 }
 
 pub fn get_user_input(message: &str, default_value: &str) -> std::io::Result<String> {
-    input(message)
-        .default_input(default_value)
-        .interact()
+    input(message).default_input(default_value).interact()
 }

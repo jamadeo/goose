@@ -1,7 +1,7 @@
-use std::error::Error;
-use serde_json::Value;
 use crate::profile::profile::AdditionalSystem;
 use crate::profile::profile_handler::{load_profiles, save_profile};
+use serde_json::Value;
+use std::error::Error;
 
 pub async fn fetch_system(url: &str) -> Result<Option<String>, Box<dyn std::error::Error>> {
     let full_url = format!("{}/fetch_name", url);
@@ -48,7 +48,10 @@ pub async fn add_system(url: String) -> Result<(), Box<dyn Error>> {
                 });
                 save_profile(profile_name, profile.clone())?
             }
-            println!("System '{}' at '{}' added to all profiles", system_name, url);
+            println!(
+                "System '{}' at '{}' added to all profiles",
+                system_name, url
+            );
             Ok(())
         }
         Err(err) => {
@@ -66,7 +69,11 @@ pub async fn remove_system(url: String) -> Result<(), Box<dyn Error>> {
                 return Ok(());
             }
             for (profile_name, profile) in profiles.iter_mut() {
-                if let Some(pos) = profile.additional_systems.iter().position(|s| s.location == url) {
+                if let Some(pos) = profile
+                    .additional_systems
+                    .iter()
+                    .position(|s| s.location == url)
+                {
                     profile.additional_systems.remove(pos);
                     save_profile(profile_name, profile.clone())?;
                     removed = true;

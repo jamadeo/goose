@@ -7,9 +7,9 @@ use crate::profile::provider_helper::{
 };
 use cliclack::spinner;
 use console::style;
+use goose::models::message::Message;
 use goose::providers::configs::ProviderConfig;
 use goose::providers::factory;
-use goose::models::message::Message;
 use std::error::Error;
 
 pub async fn handle_configure(provided_profile_name: Option<String>) -> Result<(), Box<dyn Error>> {
@@ -21,12 +21,12 @@ pub async fn handle_configure(provided_profile_name: Option<String>) -> Result<(
     let existing_profile = existing_profile_result.as_ref();
 
     let provider_name = select_provider(existing_profile);
-    let recommended_models = get_recommended_models(&provider_name);
+    let recommended_models = get_recommended_models(provider_name);
     let processor = set_processor(existing_profile, &recommended_models)?;
     let accelerator = set_accelerator(existing_profile, &recommended_models)?;
-    let provider_config = set_provider_config(&provider_name, processor.clone());
-    let additional_systems = existing_profile
-        .map_or(Vec::new(), |profile| profile.additional_systems.clone());
+    let provider_config = set_provider_config(provider_name, processor.clone());
+    let additional_systems =
+        existing_profile.map_or(Vec::new(), |profile| profile.additional_systems.clone());
     let profile = Profile {
         provider: provider_name.to_string(),
         processor: processor.clone(),
@@ -41,9 +41,7 @@ pub async fn handle_configure(provided_profile_name: Option<String>) -> Result<(
     Ok(())
 }
 
-async fn check_configuration(
-    provider_config: ProviderConfig,
-) -> Result<(), Box<dyn Error>> {
+async fn check_configuration(provider_config: ProviderConfig) -> Result<(), Box<dyn Error>> {
     let spin = spinner();
     spin.start("Now let's check your configuration...");
     let provider = factory::get_provider(provider_config).unwrap();
@@ -51,9 +49,14 @@ async fn check_configuration(
     let result = provider.complete(
                                    "You are an AI agent called Goose. You use tools of connected systems to solve problems.",
                                    &[message], &[]).await?;
-    spin.stop(result.0.content.first()
-        .and_then(|c| c.as_text())
-        .unwrap_or("No response"));
+    spin.stop(
+        result
+            .0
+            .content
+            .first()
+            .and_then(|c| c.as_text())
+            .unwrap_or("No response"),
+    );
     Ok(())
 }
 

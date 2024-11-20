@@ -1,5 +1,6 @@
 use anyhow::Result as AnyhowResult;
 use async_trait::async_trait;
+use indoc::{indoc, formatdoc};
 use serde_json::{json, Value};
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
@@ -15,7 +16,6 @@ pub struct DeveloperSystem {
     tools: Vec<Tool>,
     cwd: Mutex<PathBuf>,
     active_files: Mutex<HashSet<PathBuf>>,
-    env: Mutex<HashMap<String, String>>,
     file_history: Mutex<HashMap<PathBuf, Vec<String>>>, // Moved file_history here
 }
 
@@ -30,11 +30,18 @@ impl DeveloperSystem {
         // TODO i suggest we make working_dir required, we're seeing abs paths are more clear
         let bash_tool = Tool::new(
             "bash",
-            "Run commands in a bash shell. Perform bash-related operations in a specific order: \
-            1. Change the working directory (if provided) \
-            2. Source a file (if provided) \
-            3. Run a shell command (if provided) \
-            At least one of the parameters must be provided.",
+            indoc! {r#"
+                Run a bash command in the shell in the current working directory
+                  - You can use multiline commands or && to execute multiple in one pass
+                  - Directory changes **are not** persisted from one command to the next
+                  - Sourcing files **is not** persisted from one command to the next
+
+                For example, you can use this style to execute python in a virtualenv
+                "source .venv/bin/active && python example1.py"
+
+                but need to repeat the source for subsequent commands in that virtualenv
+                "source .venv/bin/active && python example2.py"
+            "#},
             json!({
                 "type": "object",
                 "required": [],
@@ -44,39 +51,32 @@ impl DeveloperSystem {
                         "default": null,
                         "description": "The bash shell command to run."
                     },
-                    "source_path": {
-                        "type": "string",
-                        "default": null,
-                        "description": "The file to source before running the command."
-                    },
-                    "working_dir": {
-                        "type": "string",
-                        "default": null,
-                        "description": "The directory to change to. The path must be absolute or relative to the current working directory. Defaults to the current working directory."
-                    }
                 }
             }),
         );
 
         let text_editor_tool = Tool::new(
             "text_editor",
-            "Perform text editing operations on files. The `command` parameter specifies the operation to perform.",
+            indoc! {r#"
+                Perform text editing operations on files.
+                The `command` parameter specifies the operation to perform.
+            "#},
             json!({
                 "type": "object",
                 "required": ["command", "path"],
                 "properties": {
                     "path": {
                         "type": "string",
-                        "description": "Absolute or relative path to file or directory."
+                        "description": "Path to the file. Can be absolute or relative to the system CWD"
                     },
                     "command": {
-                        "enum": ["view", "create", "str_replace", "insert", "undo_edit"],
+                        "enum": ["view", "create", "replace", "insert", "undo"],
                         "description": "The commands to run."
                     },
                     "new_str": {
                         "type": "string",
                         "default": null,
-                        "description": "Required for `str_replace` and `insert` commands."
+                        "description": "Required for `replace` and `insert` commands."
                     },
                     "old_str": {
                         "type": "string",
@@ -101,12 +101,10 @@ impl DeveloperSystem {
             tools: vec![bash_tool, text_editor_tool],
             cwd: Mutex::new(std::env::current_dir().unwrap()),
             active_files: Mutex::new(HashSet::new()),
-            env: Mutex::new(std::env::vars().collect()),
             file_history: Mutex::new(HashMap::new()), // Initialize file_history
         }
     }
 
-    // TODO i suggest we switch to all abs paths
     // Helper method to resolve a path relative to cwd
     fn resolve_path(&self, path_str: &str) -> AgentResult<PathBuf> {
         let cwd = self.cwd.lock().unwrap();
@@ -122,130 +120,49 @@ impl DeveloperSystem {
 
     // Implement bash tool functionality
     async fn bash(&self, params: Value) -> AgentResult<Vec<Content>> {
-        let working_dir = params
-            .get("working_dir")
-            .and_then(|v| v.as_str())
-            .unwrap_or(".");
-        let command = params.get("command").and_then(|v| v.as_str());
-        let source_path = params.get("source_path").and_then(|v| v.as_str());
+        let command =
+            params
+                .get("command")
+                .and_then(|v| v.as_str())
+                .ok_or(AgentError::InvalidParameters(
+                    "command argument as a string is required".into(),
+                ))?;
 
-        if command.is_none() && source_path.is_none() {
+        // Disallow commands that should use other tools
+        if command.trim_start().starts_with("cat") {
             return Err(AgentError::InvalidParameters(
-                "At least one of 'command' or 'source_path' must be provided".into(),
+                "Do not use `cat` to read files, use the view mode on the text editor tool"
+                    .to_string(),
             ));
         }
+        // TODO consider enforcing ripgrep over find?
 
-        let mut outputs = Vec::new();
+        // Redirect stderr to stdout to interleave outputs
+        let cmd_with_redirect = format!("{} 2>&1", command);
 
-        // Change working directory
-        let new_cwd = self.resolve_path(working_dir)?;
-        if !new_cwd.is_dir() {
-            return Err(AgentError::InvalidParameters(format!(
-                "The directory '{}' does not exist",
-                new_cwd.display()
-            )));
-        }
-        {
-            let mut cwd = self.cwd.lock().unwrap();
-            *cwd = new_cwd.clone();
-        }
-        if working_dir != "." {
-            outputs.push(format!("Changed directory to: {}", new_cwd.display()));
+        // Execute the command
+        let output = Command::new("bash")
+            .arg("-c")
+            .arg(cmd_with_redirect)
+            .output()
+            .map_err(|e| AgentError::ExecutionError(e.to_string()))?;
+
+        let output_str = String::from_utf8_lossy(&output.stdout).to_string();
+        if !output.status.success() {
+            return Err(AgentError::ExecutionError(output_str));
         }
 
-        // Source a file
-        if let Some(source) = source_path {
-            let source_file = self.resolve_path(source)?;
-            if !source_file.is_file() {
-                return Err(AgentError::InvalidParameters(format!(
-                    "The file '{}' does not exist",
-                    source
-                )));
-            }
-            // Scope the mutex lock for cwd and env
-            {
-                let cwd = self.cwd.lock().unwrap().clone();
-                let env = self.env.lock().unwrap().clone();
+        let formatted = formatdoc!{"
+            ## Output
 
-                let source_command = format!("source \"{}\" && env", source_file.display());
+            ```
+            {}
+            ```
+            ",
+            output_str
+        };
 
-                let output = Command::new("bash")
-                    .arg("-c")
-                    .arg(&source_command)
-                    .current_dir(cwd)
-                    .envs(env)
-                    .output()
-                    .map_err(|e| {
-                        AgentError::ExecutionError(format!(
-                            "Failed to execute source command: {}",
-                            e
-                        ))
-                    })?;
-
-                if !output.status.success() {
-                    let stderr = String::from_utf8_lossy(&output.stderr);
-                    return Err(AgentError::ExecutionError(stderr.to_string()));
-                }
-
-                let stdout = String::from_utf8_lossy(&output.stdout);
-
-                // Parse env variables from stdout
-                let mut new_env = HashMap::new();
-                for line in stdout.lines() {
-                    if let Some((key, value)) = line.split_once('=') {
-                        new_env.insert(key.to_string(), value.to_string());
-                    }
-                }
-
-                // Update self.env
-                {
-                    let mut env = self.env.lock().unwrap();
-                    *env = new_env;
-                }
-            }
-
-            outputs.push(format!("Sourced {}", source));
-        }
-
-        // Execute command
-        if let Some(cmd_str) = command {
-            // TODO these messages should be more clear, these are alternatives solved with other tools
-            // TODO we also need guardrails
-            // Disallow certain commands for safety
-            let disallowed_commands = ["cat", "cd", "source", "rm", "kill"];
-            for disallowed in &disallowed_commands {
-                if cmd_str.trim_start().starts_with(disallowed) {
-                    return Err(AgentError::InvalidParameters(format!(
-                        "The command '{}' is not allowed",
-                        disallowed
-                    )));
-                }
-            }
-
-            let cwd = self.cwd.lock().unwrap();
-            let env = self.env.lock().unwrap();
-
-            // Redirect stderr to stdout to interleave outputs
-            let cmd_with_redirect = format!("{} 2>&1", cmd_str);
-
-            // Execute the command
-            let output = Command::new("bash")
-                .arg("-c")
-                .arg(cmd_with_redirect)
-                .current_dir(&*cwd)
-                .envs(&*env)
-                .output()
-                .map_err(|e| AgentError::ExecutionError(e.to_string()))?;
-
-            let output_str = String::from_utf8_lossy(&output.stdout).to_string();
-
-            if !output.status.success() {
-                return Err(AgentError::ExecutionError(output_str));
-            }
-            outputs.push(output_str);
-        }
-
-        Ok(outputs.iter().map(|item| Content::text(item)).collect())
+        Ok(vec![Content::text(formatted)])
     }
 
     // Implement text_editor tool functionality
@@ -274,7 +191,7 @@ impl DeveloperSystem {
 
                 self.text_editor_create(&path, file_text).await
             }
-            "str_replace" => {
+            "replace" => {
                 let old_str = params
                     .get("old_str")
                     .and_then(|v| v.as_str())
@@ -288,7 +205,7 @@ impl DeveloperSystem {
                         AgentError::InvalidParameters("Missing 'new_str' parameter".into())
                     })?;
 
-                self.text_editor_str_replace(&path, old_str, new_str).await
+                self.text_editor_replace(&path, old_str, new_str).await
             }
             "insert" => {
                 let insert_line = params
@@ -307,7 +224,7 @@ impl DeveloperSystem {
                 self.text_editor_insert(&path, insert_line as usize, new_str)
                     .await
             }
-            "undo_edit" => self.text_editor_undo_edit(&path).await,
+            "undo" => self.text_editor_undo(&path).await,
             _ => Err(AgentError::InvalidParameters(format!(
                 "Unknown command '{}'",
                 command
@@ -317,31 +234,18 @@ impl DeveloperSystem {
 
     async fn text_editor_view(&self, path: &PathBuf) -> AgentResult<Vec<Content>> {
         if path.is_file() {
-            // Read the file content
-            let content = std::fs::read_to_string(path)
-                .map_err(|e| AgentError::ExecutionError(format!("Failed to read file: {}", e)))?;
+            // Rather than reading, we add this to the active files and it is shown in the system status
 
             // Add to active files
             self.active_files.lock().unwrap().insert(path.clone());
 
-            Ok(vec![Content::text(content)])
-        } else if path.is_dir() {
-            // List directory contents
-            let entries = std::fs::read_dir(path).map_err(|e| {
-                AgentError::ExecutionError(format!("Failed to read directory: {}", e))
-            })?;
-
-            let mut files = Vec::new();
-            for entry in entries {
-                let entry = entry.map_err(|e| {
-                    AgentError::ExecutionError(format!("Failed to read directory entry: {}", e))
-                })?;
-                files.push(entry.file_name().to_string_lossy().into_owned());
-            }
-            Ok(vec![Content::text(files.join("\n"))])
+            Ok(vec![Content::text(format!(
+                "The file content for {} is now available in the system status.",
+                path.display()
+            ))])
         } else {
             Err(AgentError::InvalidParameters(format!(
-                "The path '{}' does not exist",
+                "The path '{}' does not exist or is not a file.",
                 path.display()
             )))
         }
@@ -376,7 +280,7 @@ impl DeveloperSystem {
         ))])
     }
 
-    async fn text_editor_str_replace(
+    async fn text_editor_replace(
         &self,
         path: &PathBuf,
         old_str: &str,
@@ -462,7 +366,7 @@ impl DeveloperSystem {
         Ok(vec![Content::text("Successfully inserted text")])
     }
 
-    async fn text_editor_undo_edit(&self, path: &PathBuf) -> AgentResult<Vec<Content>> {
+    async fn text_editor_undo(&self, path: &PathBuf) -> AgentResult<Vec<Content>> {
         let mut history = self.file_history.lock().unwrap();
         if let Some(contents) = history.get_mut(path) {
             if let Some(previous_content) = contents.pop() {
@@ -516,17 +420,29 @@ impl System for DeveloperSystem {
 
     async fn status(&self) -> AnyhowResult<HashMap<String, Value>> {
         let cwd = self.cwd.lock().unwrap().display().to_string();
-        let active_files: Vec<String> = self
-            .active_files
-            .lock()
-            .unwrap()
-            .iter()
-            .map(|p| p.display().to_string())
-            .collect();
+        let mut file_contents = HashMap::new();
+
+        // Get mutable access to active_files to remove any we can't read
+        let mut active_files = self.active_files.lock().unwrap();
+
+        // Use retain to keep only the files we can successfully read
+        active_files.retain(|path| {
+            if !path.exists() {
+                return false;
+            }
+
+            match std::fs::read_to_string(path) {
+                Ok(content) => {
+                    file_contents.insert(path.display().to_string(), content);
+                    true
+                }
+                Err(_) => false,
+            }
+        });
 
         Ok(HashMap::from([
             ("cwd".to_string(), json!(cwd)),
-            ("active_files".to_string(), json!(active_files)),
+            ("files".to_string(), json!(file_contents)),
         ]))
     }
 

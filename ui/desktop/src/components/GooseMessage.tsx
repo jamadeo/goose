@@ -90,8 +90,8 @@ const SchemaContentDisplay: React.FC<{ content: SchemaContent }> = ({ content })
 
 export default function GooseMessage({ message, metadata }: GooseMessageProps) {
   return (
-    <div className="flex mb-4 w-auto max-w-full">
-      <div className="bg-goose-bubble text-black rounded-2xl p-4">
+    <div className="flex mb-4">
+      <div className="bg-goose-bubble w-full text-black rounded-2xl p-4">
         {message.toolInvocations ? (
           <div className="space-y-4">
             {message.toolInvocations.map((toolInvocation: any) => (

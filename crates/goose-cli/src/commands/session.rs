@@ -1,20 +1,23 @@
-use crate::profile::profile::Profile;
-use crate::profile::provider_helper::set_provider_config;
-use crate::session::Session;
+use rand::{distributions::Alphanumeric, Rng};
+use std::path::PathBuf;
 
 use goose::agent::Agent;
 use goose::providers::factory;
 
-use crate::prompt::cliclack::CliclackPrompt;
-use rand::{distributions::Alphanumeric, Rng};
-
 use crate::commands::expected_config::get_recommended_models;
+use crate::profile::profile::Profile;
 use crate::profile::profile_handler::{load_profiles, PROFILE_DEFAULT_NAME};
+use crate::profile::provider_helper::set_provider_config;
 use crate::profile::provider_helper::PROVIDER_OPEN_AI;
+use crate::prompt::cliclack::CliclackPrompt;
+use crate::session::session::Session;
+use crate::session::session_file::ensure_session_dir;
 
 pub fn build_session<'a>(session: Option<String>, profile: Option<String>) -> Box<Session<'a>> {
-    // TODO: Use session_name.
-    let _session_name = session_name(session);
+    let session_name = session_name(session);
+    let session_file: PathBuf = ensure_session_dir()
+        .expect("Failed to create session directory")
+        .join(format!("{}.jsonl", session_name));
 
     let loaded_profile = load_profile(profile);
 
@@ -27,17 +30,18 @@ pub fn build_session<'a>(session: Option<String>, profile: Option<String>) -> Bo
     let agent = Box::new(Agent::new(provider));
     let prompt = Box::new(CliclackPrompt::new());
 
-    Box::new(Session::new(agent, prompt))
+    Box::new(Session::new(agent, prompt, session_file))
 }
 
 fn session_name(session: Option<String>) -> String {
     match session {
-        Some(name) => name,
+        Some(name) => name.to_lowercase(),
         None => rand::thread_rng()
             .sample_iter(&Alphanumeric)
             .take(4)
             .map(char::from)
-            .collect(),
+            .collect::<String>()
+            .to_lowercase(),
     }
 }
 
@@ -61,7 +65,7 @@ fn load_profile(profile_name: Option<String>) -> Box<Profile> {
                 Some(profile) => Box::new(profile.clone()),
                 None => panic!(
                     "No '{}' profile found. Run configure to create a profile.",
-                    PROFILE_DEFAULT_NAME.to_string()
+                    PROFILE_DEFAULT_NAME
                 ),
             }, // Default to the first profile. TODO: Define a constant name for the default profile.
         }
