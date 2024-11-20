@@ -10,6 +10,9 @@ import UserMessage from './components/UserMessage'
 import Input from './components/Input'
 import Tabs from './components/Tabs'
 
+// Import the schema as a string
+import schemaContent from './plan.schema?raw'
+
 export interface Chat {
   id: number;
   title: string;
@@ -23,13 +26,24 @@ export default function Chat({ chats, setChats, selectedChatId, setSelectedChatI
   const onFinish = async (message: any) => {
     console.log("Chat finished with message:", message);
     try {
+      const promptTemplate = `Analyze the following text and generate a JSON-LD response based on these rules:
+1. If the text is a conversation flow question indicating nothing else to be done eg:
+"I'm here and ready to assist you with any tasks or questions you have! How can I help you today?", respond with this structure:
+   {"status": "complete", "waitingForUser": true}
+2. For all other questions or presentation of rich information, create json that conforms to the JSON schema provided, based on what is being asked in the content.
+### Schema:
+${schemaContent}
+### Content:
+${message.content}
+Generate ONLY the JSON, no markdown formatting or explanation:`;
+
       const response = await fetch(getApiUrl("/ask"), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          prompt: `hey can you look at this: ${message.content}`
+          prompt: promptTemplate
         })
       });
       
