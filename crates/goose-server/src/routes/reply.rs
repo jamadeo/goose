@@ -299,7 +299,61 @@ async fn handler(
     Ok(SseResponse::new(stream))
 }
 
+#[derive(Debug, Deserialize)]
+struct AskRequest {
+    prompt: String,
+}
+
+#[derive(Debug, serde::Serialize)]
+struct AskResponse {
+    response: String,
+}
+
+async fn ask_handler(
+    State(state): State<AppState>,
+    Json(request): Json<AskRequest>,
+) -> Result<Json<AskResponse>, StatusCode> {
+    // Setup agent with developer system
+    let provider = factory::get_provider(state.provider_config)
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    let agent = Agent::new(provider);
+
+    // Create a single message for the prompt
+    let messages = vec![Message::user().with_text(request.prompt)];
+    
+    // Get response from agent
+    let mut response_text = String::new();
+    let mut stream = agent.reply(&messages);
+
+    while let Some(response) = stream.next().await {
+        match response {
+            Ok(message) => {
+                if message.role == Role::Assistant {
+                    for content in message.content {
+                        if let MessageContent::Text(text) = content {
+                            response_text.push_str(&text.text);
+                            response_text.push('\n');
+                        }
+                    }
+                }
+            }
+            Err(e) => {
+                tracing::error!("Error processing message: {}", e);
+                return Err(StatusCode::INTERNAL_SERVER_ERROR);
+            }
+        }
+    }
+
+    Ok(Json(AskResponse {
+        response: response_text.trim().to_string(),
+    }))
+}
+
 // Configure routes for this module
 pub fn routes(state: AppState) -> Router {
-    Router::new().route("/reply", post(handler)).with_state(state)
+    Router::new()
+        .route("/reply", post(handler))
+        .route("/ask", post(ask_handler))
+        .with_state(state)
 }
