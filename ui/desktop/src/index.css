@@ -38,5 +38,13 @@
     letter-spacing: var(--Type-styles-Paragraph-tracking-20, 0px);
     background: var(--fill-40, rgba(0, 0, 0, 0.05))
   }
+
+  .tab-type {
+    color: rgba(91, 91, 91, 0.80);
+    font-size: 10px;
+    font-style: normal;
+    font-weight: 500;
+    line-height: normal;
+  }
 }
 

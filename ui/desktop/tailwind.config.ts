@@ -17,7 +17,7 @@ export default {
         '50': '50px'
       },
       backgroundImage: {
-        'card-gradient': 'linear-gradient(28.59deg, rgba(255, 255, 255, 0.9) 5.64%, rgba(226, 245, 251, 0.9) 94.49%);',
+        'card-gradient': 'linear-gradient(359deg, rgba(255, 255, 255, 0.90) 9.96%, rgba(226, 245, 251, 0.90) 95.35%);',
         'window-gradient': 'linear-gradient(90deg, rgba(255, 255, 255, 0.55) 0%, rgba(246, 247, 255, 0.55) 100%);'
       },
       fontSize: {
