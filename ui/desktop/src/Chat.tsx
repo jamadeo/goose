@@ -11,6 +11,15 @@ import Input from './components/Input'
 import Tabs from './components/Tabs'
 
 // Import the schema as a string
+// Simple debug logging helper
+function logResponseContent(content: any): void {
+  console.log('Response content:', {
+    type: content.type,
+    rawContent: content,
+    timestamp: new Date().toISOString()
+  });
+}
+
 import schemaContent from './plan.schema?raw'
 
 export interface Chat {
@@ -21,7 +30,7 @@ export interface Chat {
 
 export default function Chat({ chats, setChats, selectedChatId, setSelectedChatId } : { chats: Chat[], setChats: any, selectedChatId: number, setSelectedChatId: any }) {
   const chat = chats.find((c: Chat) => c.id === selectedChatId);
-  const [messageMetadata, setMessageMetadata] = useState<Record<string, { randomText: string }>>({});
+  const [messageMetadata, setMessageMetadata] = useState<Record<string, { schemaContent: any }>>({});
 
   const onFinish = async (message: any) => {
     console.log("Chat finished with message:", message);
@@ -52,16 +61,39 @@ Generate ONLY the JSON, no markdown formatting or explanation:`;
       }
       
       const data = await response.json();
-      setMessageMetadata(prev => ({
-        ...prev,
-        [message.id]: { randomText: data.response }
-      }));
+      // Log the raw response for debugging
+      console.log('Raw response from /ask:', data.response);
+
+      try {
+        // Try to parse the JSON and log the result
+        let parsedContent;
+        try {
+          parsedContent = JSON.parse(data.response);
+          logResponseContent(parsedContent);
+          
+          setMessageMetadata(prev => ({
+            ...prev,
+            [message.id]: { schemaContent: parsedContent }
+          }));
+        } catch (parseError) {
+          console.error('JSON Parse Error:', {
+            error: parseError,
+            rawResponse: data.response,
+            errorMessage: parseError.message
+          });
+          return;
+        }
+
+      } catch (e) {
+        console.error('Unexpected error processing schema content:', {
+          error: e,
+          messageId: message.id,
+          errorMessage: e.message,
+          stack: e.stack
+        });
+      }
     } catch (error) {
       console.error('Error getting feedback:', error);
-      setMessageMetadata(prev => ({
-        ...prev,
-        [message.id]: { randomText: 'Failed to get feedback' }
-      }));
     }
   };
 
