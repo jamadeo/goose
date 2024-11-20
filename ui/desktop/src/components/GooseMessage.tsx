@@ -230,9 +230,9 @@ export default function GooseMessage({ message, metadata }: GooseMessageProps) {
           <div>
             <ReactMarkdown>{message.content}</ReactMarkdown>
             {metadata?.schemaContent && (
-              <div className="mt-4 border-t pt-4">
+              
                 <SchemaContentDisplay content={metadata.schemaContent} />
-              </div>
+              
             )}
           </div>
         )}
