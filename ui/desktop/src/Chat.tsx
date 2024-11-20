@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useChat } from 'ai/react'
 import { getApiUrl } from './config'
 import { Card } from './components/ui/card'
@@ -18,8 +18,19 @@ export interface Chat {
 
 export default function Chat({ chats, setChats, selectedChatId, setSelectedChatId } : { chats: Chat[], setChats: any, selectedChatId: number, setSelectedChatId: any }) {
   const chat = chats.find((c: Chat) => c.id === selectedChatId);
+  const [messageMetadata, setMessageMetadata] = useState<Record<string, { randomText: string }>>({});
+
+  const onFinish = async (message: any) => {
+    console.log("Chat finished with message:", message);
+    const randomText = `Random feedback #${Math.floor(Math.random() * 1000)}`;
+    setMessageMetadata(prev => ({
+      ...prev,
+      [message.id]: { randomText }
+    }));
+  };
 
   const { messages, input, handleInputChange, handleSubmit, append } = useChat({
+    onFinish,
     api: getApiUrl("/reply"),
     initialMessages: chat.messages
   })
@@ -53,7 +64,10 @@ export default function Chat({ chats, setChats, selectedChatId, setSelectedChatI
                 {message.role === 'user' ? (
                   <UserMessage message={message} />
                 ) : (
-                  <GooseMessage message={message} />
+                  <GooseMessage 
+                    message={message} 
+                    metadata={messageMetadata[message.id]}
+                  />
                 )}
               </div>
             ))}

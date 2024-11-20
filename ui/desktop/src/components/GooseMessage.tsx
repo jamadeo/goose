@@ -2,7 +2,16 @@ import React from 'react'
 import ToolInvocation from './ToolInvocation'
 import ReactMarkdown from 'react-markdown'
 
-export default function GooseMessage({ message }) {
+interface MessageMetadata {
+  randomText: string;
+}
+
+interface GooseMessageProps {
+  message: any;
+  metadata?: MessageMetadata;
+}
+
+export default function GooseMessage({ message, metadata }: GooseMessageProps) {
   return (
     <div className="flex mb-4 w-auto max-w-full">
       <div className="bg-goose-bubble text-black rounded-2xl p-4">
@@ -16,9 +25,16 @@ export default function GooseMessage({ message }) {
             ))}
           </div>
         ) : (
-          <ReactMarkdown>{message.content}</ReactMarkdown>
+          <div>
+            <ReactMarkdown>{message.content}</ReactMarkdown>
+            {metadata?.randomText && (
+              <div className="mt-2 text-sm text-gray-500 italic">
+                {metadata.randomText}
+              </div>
+            )}
+          </div>
         )}
       </div>
     </div>
   )
-};
+}
