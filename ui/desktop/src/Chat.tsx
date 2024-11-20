@@ -52,7 +52,7 @@ export default function Chat({ chats, setChats, selectedChatId, setSelectedChatI
 ${schemaContent}
 ### Content:
 ${message.content}
-Generate ONLY the JSON, no markdown formatting or explanation:`;
+Generate ONLY the JSON, no markdown formatting or explanation:\n\n{`;
 
       const response = await fetch(getApiUrl("/ask"), {
         method: 'POST',
