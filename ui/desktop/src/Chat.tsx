@@ -22,11 +22,33 @@ export default function Chat({ chats, setChats, selectedChatId, setSelectedChatI
 
   const onFinish = async (message: any) => {
     console.log("Chat finished with message:", message);
-    const randomText = `Random feedback #${Math.floor(Math.random() * 1000)}`;
-    setMessageMetadata(prev => ({
-      ...prev,
-      [message.id]: { randomText }
-    }));
+    try {
+      const response = await fetch(getApiUrl("/ask"), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          prompt: `hey can you look at this: ${message.content}`
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to get response');
+      }
+      
+      const data = await response.json();
+      setMessageMetadata(prev => ({
+        ...prev,
+        [message.id]: { randomText: data.response }
+      }));
+    } catch (error) {
+      console.error('Error getting feedback:', error);
+      setMessageMetadata(prev => ({
+        ...prev,
+        [message.id]: { randomText: 'Failed to get feedback' }
+      }));
+    }
   };
 
   const { messages, input, handleInputChange, handleSubmit, append } = useChat({
