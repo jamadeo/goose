@@ -10,16 +10,12 @@ import UserMessage from './components/UserMessage'
 import Input from './components/Input'
 import Tabs from './components/Tabs'
 
-// Import the schema as a string
-// Helper function to strip markdown code blocks
 function stripMarkdownCodeBlocks(text: string): string {
-  // Remove ```json or ``` markers
   const jsonBlockRegex = /^```(?:json)?\n([\s\S]*?)```$/;
   const match = text.trim().match(jsonBlockRegex);
   return match ? match[1].trim() : text.trim();
 }
 
-// Simple debug logging helper
 function logResponseContent(content: any): void {
   console.log('Response content:', {
     type: content.type,
@@ -28,7 +24,7 @@ function logResponseContent(content: any): void {
   });
 }
 
-import schemaContent from './plan.schema?raw'
+import schemaContent from './plan.schema.simple?raw'
 
 export interface Chat {
   id: number;
@@ -43,16 +39,24 @@ export default function Chat({ chats, setChats, selectedChatId, setSelectedChatI
   const onFinish = async (message: any) => {
     console.log("Chat finished with message:", message);
     try {
-      const promptTemplate = `Analyze the following text and generate a JSON-LD response based on these rules:
-1. If the text is a conversation flow question indicating nothing else to be done eg:
-"I'm here and ready to assist you with any tasks or questions you have! How can I help you today?", respond with this structure:
+      const promptTemplate = `Analyze the following text and determine if it matches one of these cases:
+
+1. If it's asking for confirmation of a specific plan, respond with:
+   {"type": "PlanConfirmation", "selectedPlan": {"id": "...", "name": "...", "description": "..."}}
+
+2. If it's presenting multiple plans to choose from, respond with:
+   {"type": "PlanChoice", "plans": [{"id": "...", "name": "...", "description": "..."}, ...]}
+
+3. If it requires more complex input or doesn't fit the above cases, respond with:
+   {"type": "ComplexInput", "complexInputReason": "explanation of what's needed"}
+
+4. If it's a simple greeting or acknowledgment, respond with:
    {"status": "complete", "waitingForUser": true}
-2. For all other questions or presentation of rich information, create json that conforms to the JSON schema provided, based on what is being asked in the content.
-### Schema:
-${schemaContent}
-### Content:
+
+Content to analyze:
 ${message.content}
-Generate ONLY the JSON, no markdown formatting or explanation:\n\n{`;
+
+Generate ONLY the JSON response, no additional text:`;
 
       const response = await fetch(getApiUrl("/ask"), {
         method: 'POST',
@@ -69,38 +73,23 @@ Generate ONLY the JSON, no markdown formatting or explanation:\n\n{`;
       }
       
       const data = await response.json();
-      // Log the raw response for debugging
       console.log('Raw response from /ask:', data.response);
 
       try {
-        // Try to parse the JSON and log the result
-        let parsedContent;
-        try {
-          // Strip any markdown code blocks before parsing
-          const cleanedResponse = stripMarkdownCodeBlocks(data.response);
-          console.log('Cleaned response:', cleanedResponse);
-          parsedContent = JSON.parse(cleanedResponse);
-          logResponseContent(parsedContent);
-          
-          setMessageMetadata(prev => ({
-            ...prev,
-            [message.id]: { schemaContent: parsedContent }
-          }));
-        } catch (parseError) {
-          console.error('JSON Parse Error:', {
-            error: parseError,
-            rawResponse: data.response,
-            errorMessage: parseError.message
-          });
-          return;
-        }
-
-      } catch (e) {
-        console.error('Unexpected error processing schema content:', {
-          error: e,
-          messageId: message.id,
-          errorMessage: e.message,
-          stack: e.stack
+        const cleanedResponse = stripMarkdownCodeBlocks(data.response);
+        console.log('Cleaned response:', cleanedResponse);
+        const parsedContent = JSON.parse(cleanedResponse);
+        logResponseContent(parsedContent);
+        
+        setMessageMetadata(prev => ({
+          ...prev,
+          [message.id]: { schemaContent: parsedContent }
+        }));
+      } catch (parseError) {
+        console.error('JSON Parse Error:', {
+          error: parseError,
+          rawResponse: data.response,
+          errorMessage: parseError.message
         });
       }
     } catch (error) {
