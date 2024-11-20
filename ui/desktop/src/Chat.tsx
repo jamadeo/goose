@@ -11,6 +11,14 @@ import Input from './components/Input'
 import Tabs from './components/Tabs'
 
 // Import the schema as a string
+// Helper function to strip markdown code blocks
+function stripMarkdownCodeBlocks(text: string): string {
+  // Remove ```json or ``` markers
+  const jsonBlockRegex = /^```(?:json)?\n([\s\S]*?)```$/;
+  const match = text.trim().match(jsonBlockRegex);
+  return match ? match[1].trim() : text.trim();
+}
+
 // Simple debug logging helper
 function logResponseContent(content: any): void {
   console.log('Response content:', {
@@ -68,7 +76,10 @@ Generate ONLY the JSON, no markdown formatting or explanation:`;
         // Try to parse the JSON and log the result
         let parsedContent;
         try {
-          parsedContent = JSON.parse(data.response);
+          // Strip any markdown code blocks before parsing
+          const cleanedResponse = stripMarkdownCodeBlocks(data.response);
+          console.log('Cleaned response:', cleanedResponse);
+          parsedContent = JSON.parse(cleanedResponse);
           logResponseContent(parsedContent);
           
           setMessageMetadata(prev => ({
