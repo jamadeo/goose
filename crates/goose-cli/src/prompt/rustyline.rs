@@ -306,6 +306,7 @@ impl Prompt for RustylinePrompt {
             Err(e) => {
                 match e {
                     rustyline::error::ReadlineError::Interrupted => (),
+                    rustyline::error::ReadlineError::Eof => (),
                     _ => eprintln!("Input error: {}", e),
                 }
                 return Ok(Input {
