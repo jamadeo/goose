@@ -112,7 +112,8 @@ impl ExtensionManager {
     /// Add a new MCP extension based on the provided client type
     // TODO IMPORTANT need to ensure this times out if the extension command is broken!
     pub async fn add_extension(&mut self, config: ExtensionConfig) -> ExtensionResult<()> {
-        let sanitized_name = normalize(config.key().to_string());
+        let config_name = config.key().to_string();
+        let sanitized_name = normalize(config_name.clone());
 
         /// Helper function to merge environment variables from direct envs and keychain-stored env_keys
         async fn merge_environments(
@@ -276,9 +277,29 @@ impl ExtensionManager {
             while let Some(notification) = notification_stream.recv().await {
                 match notification {
                     JsonRpcMessage::Notification(JsonRpcNotification {
-                        method, params, ..
+                        method,
+                        params: Some(Value::Object(o)),
+                        ..
                     }) => {
-                        println!("Received notification: {} - {:?}", method, params);
+                        if method == "notifications/message" {
+                            let data = o.get("data").unwrap_or(&Value::Null);
+                            let message = match data {
+                                Value::String(s) => s.clone(),
+                                v => v.to_string(),
+                            };
+                            println!("[{}] {}", config_name, message);
+                        } else if method == "notifications/progress" {
+                            let message = o
+                                .get("message")
+                                .map(|v| format!("{} ", v.to_string()))
+                                .unwrap_or_default();
+                            let progress = o.get("progress").unwrap_or(&Value::Null);
+                            let total = o
+                                .get("total")
+                                .map(|v| v.to_string())
+                                .unwrap_or_else(|| "?".to_string());
+                            println!("[{}] {}({}/{})", config_name, message, progress, total);
+                        }
                     }
                     _ => {}
                 }

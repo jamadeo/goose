@@ -4,7 +4,7 @@ use mcp_core::protocol::{
     ListResourcesResult, ListToolsResult, ReadResourceResult, ServerCapabilities, METHOD_NOT_FOUND,
 };
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
+use serde_json::{json, Value};
 use std::sync::atomic::{AtomicU64, Ordering};
 use thiserror::Error;
 use tokio::sync::{mpsc, Mutex};
@@ -165,13 +165,18 @@ where
     {
         let mut service = self.service.lock().await;
         service.ready().await.map_err(|_| Error::NotReady)?;
-
         let id = self.next_id.fetch_add(1, Ordering::SeqCst);
+
+        let mut params = params.clone();
+        params["_meta"] = json!({
+            "progressToken": format!("prog-{}", id),
+        });
+
         let request = JsonRpcMessage::Request(JsonRpcRequest {
             jsonrpc: "2.0".to_string(),
             id: Some(id),
             method: method.to_string(),
-            params: Some(params.clone()),
+            params: Some(params),
         });
 
         let response_msg = service
