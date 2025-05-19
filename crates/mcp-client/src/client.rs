@@ -7,8 +7,10 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::sync::atomic::{AtomicU64, Ordering};
 use thiserror::Error;
-use tokio::sync::Mutex;
-use tower::{Service, ServiceExt}; // for Service::ready()
+use tokio::sync::{mpsc, Mutex};
+use tower::{timeout::TimeoutLayer, Layer, Service, ServiceExt};
+
+use crate::{McpService, TransportHandle};
 
 pub type BoxError = Box<dyn std::error::Error + Sync + Send>;
 
@@ -97,34 +99,63 @@ pub trait McpClientTrait: Send + Sync {
     async fn list_prompts(&self, next_cursor: Option<String>) -> Result<ListPromptsResult, Error>;
 
     async fn get_prompt(&self, name: &str, arguments: Value) -> Result<GetPromptResult, Error>;
+
+    fn take_notification_receiver(&mut self) -> Option<mpsc::Receiver<JsonRpcMessage>>;
 }
 
 /// The MCP client is the interface for MCP operations.
-pub struct McpClient<S>
+pub struct McpClient<T>
 where
-    S: Service<JsonRpcMessage, Response = JsonRpcMessage> + Clone + Send + Sync + 'static,
-    S::Error: Into<Error>,
-    S::Future: Send,
+    T: TransportHandle + Send + Sync + 'static,
 {
-    service: Mutex<S>,
+    service: Mutex<tower::timeout::Timeout<McpService<T>>>,
     next_id: AtomicU64,
     server_capabilities: Option<ServerCapabilities>,
     server_info: Option<Implementation>,
+    notify_rx: Option<mpsc::Receiver<JsonRpcMessage>>,
 }
 
-impl<S> McpClient<S>
+impl<T> McpClient<T>
 where
-    S: Service<JsonRpcMessage, Response = JsonRpcMessage> + Clone + Send + Sync + 'static,
-    S::Error: Into<Error>,
-    S::Future: Send,
+    T: TransportHandle + Send + Sync + 'static,
 {
-    pub fn new(service: S) -> Self {
-        Self {
-            service: Mutex::new(service),
+    pub async fn connect(transport: T, timeout: std::time::Duration) -> Result<Self, Error> {
+        let service = McpService::new(transport.clone());
+        let service_ptr = service.clone();
+        let (notify_tx, notify_rx) = mpsc::channel::<JsonRpcMessage>(256);
+        let router_notify_tx = notify_tx.clone();
+
+        tokio::spawn(async move {
+            loop {
+                match transport.receive().await {
+                    Ok(message) => {
+                        tracing::info!("Received message: {:?}", message);
+                        match message {
+                            JsonRpcMessage::Response(JsonRpcResponse { id: Some(id), .. }) => {
+                                service_ptr.respond(&id.to_string(), Ok(message)).await;
+                            }
+                            _ => {
+                                router_notify_tx.try_send(message).ok();
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        tracing::error!("Error receiving message: {:?}", e);
+                        break;
+                    }
+                }
+            }
+        });
+
+        let middleware = TimeoutLayer::new(timeout);
+
+        Ok(Self {
+            service: Mutex::new(middleware.layer(service)),
             next_id: AtomicU64::new(1),
             server_capabilities: None,
             server_info: None,
-        }
+            notify_rx: Some(notify_rx),
+        })
     }
 
     /// Send a JSON-RPC request and check we don't get an error response.
@@ -154,7 +185,7 @@ where
                     .unwrap_or("".to_string()),
                 method: method.to_string(),
                 // we don't need include params because it can be really large
-                source: Box::new(e.into()),
+                source: Box::<Error>::new(e.into()),
             })?;
 
         match response_msg {
@@ -220,7 +251,7 @@ where
                     .unwrap_or("".to_string()),
                 method: method.to_string(),
                 // we don't need include params because it can be really large
-                source: Box::new(e.into()),
+                source: Box::<Error>::new(e.into()),
             })?;
 
         Ok(())
@@ -233,11 +264,9 @@ where
 }
 
 #[async_trait::async_trait]
-impl<S> McpClientTrait for McpClient<S>
+impl<T> McpClientTrait for McpClient<T>
 where
-    S: Service<JsonRpcMessage, Response = JsonRpcMessage> + Clone + Send + Sync + 'static,
-    S::Error: Into<Error>,
-    S::Future: Send,
+    T: TransportHandle + Send + Sync + 'static,
 {
     async fn initialize(
         &mut self,
@@ -387,5 +416,9 @@ where
         let params = serde_json::json!({ "name": name, "arguments": arguments });
 
         self.send_request("prompts/get", params).await
+    }
+
+    fn take_notification_receiver(&mut self) -> Option<mpsc::Receiver<JsonRpcMessage>> {
+        self.notify_rx.take()
     }
 }

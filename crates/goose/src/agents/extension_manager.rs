@@ -2,8 +2,7 @@ use anyhow::Result;
 use chrono::{DateTime, TimeZone, Utc};
 use futures::future;
 use futures::stream::{FuturesUnordered, StreamExt};
-use mcp_client::McpService;
-use mcp_core::protocol::GetPromptResult;
+use mcp_core::protocol::{GetPromptResult, JsonRpcMessage, JsonRpcNotification};
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use std::sync::LazyLock;
@@ -183,13 +182,15 @@ impl ExtensionManager {
                 let all_envs = merge_environments(envs, env_keys, &sanitized_name).await?;
                 let transport = SseTransport::new(uri, all_envs);
                 let handle = transport.start().await?;
-                let service = McpService::with_timeout(
-                    handle,
-                    Duration::from_secs(
-                        timeout.unwrap_or(crate::config::DEFAULT_EXTENSION_TIMEOUT),
-                    ),
-                );
-                Box::new(McpClient::new(service))
+                Box::new(
+                    McpClient::connect(
+                        handle,
+                        Duration::from_secs(
+                            timeout.unwrap_or(crate::config::DEFAULT_EXTENSION_TIMEOUT),
+                        ),
+                    )
+                    .await?,
+                )
             }
             ExtensionConfig::Stdio {
                 cmd,
@@ -202,13 +203,15 @@ impl ExtensionManager {
                 let all_envs = merge_environments(envs, env_keys, &sanitized_name).await?;
                 let transport = StdioTransport::new(cmd, args.to_vec(), all_envs);
                 let handle = transport.start().await?;
-                let service = McpService::with_timeout(
-                    handle,
-                    Duration::from_secs(
-                        timeout.unwrap_or(crate::config::DEFAULT_EXTENSION_TIMEOUT),
-                    ),
-                );
-                Box::new(McpClient::new(service))
+                Box::new(
+                    McpClient::connect(
+                        handle,
+                        Duration::from_secs(
+                            timeout.unwrap_or(crate::config::DEFAULT_EXTENSION_TIMEOUT),
+                        ),
+                    )
+                    .await?,
+                )
             }
             ExtensionConfig::Builtin {
                 name,
@@ -227,13 +230,15 @@ impl ExtensionManager {
                     HashMap::new(),
                 );
                 let handle = transport.start().await?;
-                let service = McpService::with_timeout(
-                    handle,
-                    Duration::from_secs(
-                        timeout.unwrap_or(crate::config::DEFAULT_EXTENSION_TIMEOUT),
-                    ),
-                );
-                Box::new(McpClient::new(service))
+                Box::new(
+                    McpClient::connect(
+                        handle,
+                        Duration::from_secs(
+                            timeout.unwrap_or(crate::config::DEFAULT_EXTENSION_TIMEOUT),
+                        ),
+                    )
+                    .await?,
+                )
             }
             _ => unreachable!(),
         };
@@ -260,8 +265,25 @@ impl ExtensionManager {
                 .insert(sanitized_name.clone());
         }
 
+        let mut notification_stream = client
+            .take_notification_receiver()
+            .expect("Should have a notification stream");
+
         self.clients
             .insert(sanitized_name.clone(), Arc::new(Mutex::new(client)));
+
+        tokio::spawn(async move {
+            while let Some(notification) = notification_stream.recv().await {
+                match notification {
+                    JsonRpcMessage::Notification(JsonRpcNotification {
+                        method, params, ..
+                    }) => {
+                        println!("Received notification: {} - {:?}", method, params);
+                    }
+                    _ => {}
+                }
+            }
+        });
 
         Ok(())
     }
