@@ -7,6 +7,7 @@ mod thinking;
 
 pub use builder::{build_session, SessionBuilderConfig};
 use console::Color;
+use goose::agents::AgentEvent;
 use goose::permission::permission_confirmation::PrincipalType;
 use goose::permission::Permission;
 use goose::permission::PermissionConfirmation;
@@ -682,7 +683,7 @@ impl Session {
             tokio::select! {
                 result = stream.next() => {
                     match result {
-                        Some(Ok(message)) => {
+                        Some(Ok(AgentEvent::Message(message))) => {
                             // If it's a confirmation request, get approval but otherwise do not render/persist
                             if let Some(MessageContent::ToolConfirmationRequest(confirmation)) = message.content.first() {
                                 output::hide_thinking();
@@ -760,6 +761,9 @@ impl Session {
                                 output::render_message(&message, self.debug);
                                 if interactive {output::show_thinking()};
                             }
+                        }
+                        Some(Ok(AgentEvent::Notification(n))) => {
+                            println!("Handle notification: {:?}", n);
                         }
                         Some(Err(e)) => {
                             eprintln!("Error: {}", e);

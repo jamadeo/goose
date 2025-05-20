@@ -225,6 +225,8 @@ export function useMessageStream({
                 const data = event.slice(6); // Remove 'data: ' prefix
                 const parsedEvent = JSON.parse(data) as MessageEvent;
 
+                console.log('Parsed SSE event:', parsedEvent);
+
                 switch (parsedEvent.type) {
                   case 'Message': {
                     // Create a new message object with the properties preserved or defaulted
@@ -326,6 +328,8 @@ export function useMessageStream({
           const text = await response.text();
           throw new Error(text || `Error ${response.status}: ${response.statusText}`);
         }
+
+        console.log('Response received:', response);
 
         // Process the SSE stream
         const updatedMessages = await processMessageStream(response, requestMessages);

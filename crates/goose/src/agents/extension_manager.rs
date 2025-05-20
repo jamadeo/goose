@@ -1,7 +1,7 @@
 use anyhow::Result;
 use chrono::{DateTime, TimeZone, Utc};
-use futures::future;
 use futures::stream::{FuturesUnordered, StreamExt};
+use futures::{future, FutureExt};
 use mcp_core::protocol::{GetPromptResult, JsonRpcMessage, JsonRpcNotification};
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
@@ -9,15 +9,17 @@ use std::sync::LazyLock;
 use std::time::Duration;
 use tokio::sync::Mutex;
 use tokio::task;
-use tracing::{debug, error, warn};
+use tokio_stream::wrappers::ReceiverStream;
+use tracing::{error, warn};
 
 use super::extension::{ExtensionConfig, ExtensionError, ExtensionInfo, ExtensionResult, ToolInfo};
+use super::tool_execution::ToolCallResult;
 use crate::agents::extension::Envs;
 use crate::config::{Config, ExtensionConfigManager};
 use crate::prompt_template;
 use mcp_client::client::{ClientCapabilities, ClientInfo, McpClient, McpClientTrait};
 use mcp_client::transport::{SseTransport, StdioTransport, Transport};
-use mcp_core::{prompt::Prompt, Content, Tool, ToolCall, ToolError, ToolResult};
+use mcp_core::{prompt::Prompt, Content, Tool, ToolCall, ToolError};
 use serde_json::Value;
 
 // By default, we set it to Jan 1, 2020 if the resource does not have a timestamp
@@ -266,9 +268,7 @@ impl ExtensionManager {
                 .insert(sanitized_name.clone());
         }
 
-        let mut notification_stream = client
-            .take_notification_receiver()
-            .expect("Should have a notification stream");
+        let mut notification_stream = client.subscribe().await;
 
         self.clients
             .insert(sanitized_name.clone(), Arc::new(Mutex::new(client)));
@@ -652,7 +652,7 @@ impl ExtensionManager {
         }
     }
 
-    pub async fn dispatch_tool_call(&self, tool_call: ToolCall) -> ToolResult<Vec<Content>> {
+    pub async fn dispatch_tool_call(&self, tool_call: ToolCall) -> Result<ToolCallResult> {
         // Dispatch tool call based on the prefix naming convention
         let (client_name, client) = self
             .get_client_for_tool(&tool_call.name)
@@ -663,22 +663,26 @@ impl ExtensionManager {
             .name
             .strip_prefix(client_name)
             .and_then(|s| s.strip_prefix("__"))
-            .ok_or_else(|| ToolError::NotFound(tool_call.name.clone()))?;
+            .ok_or_else(|| ToolError::NotFound(tool_call.name.clone()))?
+            .to_string();
 
-        let client_guard = client.lock().await;
+        let arguments = tool_call.arguments.clone();
+        let client = client.clone();
+        let notifications_receiver = client.lock().await.subscribe().await;
 
-        let result = client_guard
-            .call_tool(tool_name, tool_call.clone().arguments)
-            .await
-            .map(|result| result.content)
-            .map_err(|e| ToolError::ExecutionError(e.to_string()));
+        let fut = async move {
+            let client_guard = client.lock().await;
+            client_guard
+                .call_tool(&tool_name, arguments)
+                .await
+                .map(|call| call.content)
+                .map_err(|e| ToolError::ExecutionError(e.to_string()))
+        };
 
-        debug!(
-            "input" = serde_json::to_string(&tool_call).unwrap(),
-            "output" = serde_json::to_string(&result).unwrap(),
-        );
-
-        result
+        Ok(ToolCallResult {
+            result: Box::new(fut.boxed()),
+            notification_stream: Some(Box::new(ReceiverStream::new(notifications_receiver))),
+        })
     }
 
     pub async fn list_prompts_from_extension(
@@ -832,14 +836,18 @@ impl ExtensionManager {
 
 #[cfg(test)]
 mod tests {
+    use std::sync::atomic::AtomicU64;
+
     use super::*;
     use mcp_client::client::Error;
     use mcp_client::client::McpClientTrait;
+    use mcp_client::client::SubscriptionHandle;
     use mcp_core::protocol::{
         CallToolResult, GetPromptResult, InitializeResult, ListPromptsResult, ListResourcesResult,
         ListToolsResult, ReadResourceResult,
     };
     use serde_json::json;
+    use tokio::sync::mpsc;
 
     struct MockClient {}
 
@@ -891,6 +899,10 @@ mod tests {
             _arguments: Value,
         ) -> Result<GetPromptResult, Error> {
             Err(Error::NotInitialized)
+        }
+
+        async fn subscribe(&self) -> mpsc::Receiver<JsonRpcMessage> {
+            mpsc::channel(1).1
         }
     }
 
@@ -1013,6 +1025,9 @@ mod tests {
 
         let result = extension_manager
             .dispatch_tool_call(invalid_tool_call)
+            .await
+            .unwrap()
+            .result
             .await;
         assert!(matches!(
             result.err().unwrap(),
@@ -1028,6 +1043,9 @@ mod tests {
 
         let result = extension_manager
             .dispatch_tool_call(invalid_tool_call)
+            .await
+            .unwrap()
+            .result
             .await;
         assert!(matches!(result.err().unwrap(), ToolError::NotFound(_)));
     }

@@ -5,7 +5,10 @@ use mcp_core::protocol::{
 };
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::{
+    atomic::{AtomicU64, Ordering},
+    Arc,
+};
 use thiserror::Error;
 use tokio::sync::{mpsc, Mutex};
 use tower::{timeout::TimeoutLayer, Layer, Service, ServiceExt};
@@ -100,7 +103,12 @@ pub trait McpClientTrait: Send + Sync {
 
     async fn get_prompt(&self, name: &str, arguments: Value) -> Result<GetPromptResult, Error>;
 
-    fn take_notification_receiver(&mut self) -> Option<mpsc::Receiver<JsonRpcMessage>>;
+    async fn subscribe(&self) -> mpsc::Receiver<JsonRpcMessage>;
+}
+
+#[derive(Hash, Eq, PartialEq, Clone, Debug, Copy, Default)]
+pub struct SubscriptionHandle {
+    id: u64,
 }
 
 /// The MCP client is the interface for MCP operations.
@@ -112,7 +120,7 @@ where
     next_id: AtomicU64,
     server_capabilities: Option<ServerCapabilities>,
     server_info: Option<Implementation>,
-    notify_rx: Option<mpsc::Receiver<JsonRpcMessage>>,
+    notification_subscribers: Arc<Mutex<Vec<mpsc::Sender<JsonRpcMessage>>>>,
 }
 
 impl<T> McpClient<T>
@@ -122,8 +130,9 @@ where
     pub async fn connect(transport: T, timeout: std::time::Duration) -> Result<Self, Error> {
         let service = McpService::new(transport.clone());
         let service_ptr = service.clone();
-        let (notify_tx, notify_rx) = mpsc::channel::<JsonRpcMessage>(256);
-        let router_notify_tx = notify_tx.clone();
+        let notification_subscribers =
+            Arc::new(Mutex::new(Vec::<mpsc::Sender<JsonRpcMessage>>::new()));
+        let subscribers_ptr = notification_subscribers.clone();
 
         tokio::spawn(async move {
             loop {
@@ -135,7 +144,11 @@ where
                                 service_ptr.respond(&id.to_string(), Ok(message)).await;
                             }
                             _ => {
-                                router_notify_tx.try_send(message).ok();
+                                let mut subs = subscribers_ptr.lock().await;
+                                subs.retain(|sub| match sub.try_send(message.clone()) {
+                                    Ok(_) => true,
+                                    Err(_) => false,
+                                });
                             }
                         }
                     }
@@ -154,7 +167,7 @@ where
             next_id: AtomicU64::new(1),
             server_capabilities: None,
             server_info: None,
-            notify_rx: Some(notify_rx),
+            notification_subscribers,
         })
     }
 
@@ -423,7 +436,9 @@ where
         self.send_request("prompts/get", params).await
     }
 
-    fn take_notification_receiver(&mut self) -> Option<mpsc::Receiver<JsonRpcMessage>> {
-        self.notify_rx.take()
+    async fn subscribe(&self) -> mpsc::Receiver<JsonRpcMessage> {
+        let (tx, rx) = mpsc::channel(16);
+        self.notification_subscribers.lock().await.push(tx);
+        rx
     }
 }
