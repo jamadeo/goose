@@ -142,6 +142,7 @@ function ChatContent({
     handleInputChange: _handleInputChange,
     handleSubmit: _submitMessage,
     updateMessageStreamBody,
+    notifications,
   } = useMessageStream({
     api: getApiUrl('/reply'),
     initialMessages: chat.messages,
@@ -563,6 +564,19 @@ function ChatContent({
                 </div>
               ))}
             </SearchView>
+
+{/* TODO: not this of course! just wiring it up */}
+            {notifications.map((notification, index) => (
+              <div
+                key={index}
+                className="flex flex-col items-center justify-center p-4"
+                data-testid="notification"
+              >
+                <div className="text-blue-700 dark:text-blue-300 bg-blue-400/50 p-3 rounded-lg mb-2">
+                  {(notification as any).params.data.output as string}
+                </div>
+              </div>
+            ))}
             {error && (
               <div className="flex flex-col items-center justify-center p-4">
                 <div className="text-red-700 dark:text-red-300 bg-red-400/50 p-3 rounded-lg mb-2">

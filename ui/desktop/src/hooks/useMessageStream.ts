@@ -130,6 +130,8 @@ export interface UseMessageStreamHelpers {
 
   /** Modify body (session id and/or work dir mid-stream) **/
   updateMessageStreamBody?: (newBody: object) => void;
+
+  notifications: NotificationEvent[];
 }
 
 /**
@@ -156,6 +158,8 @@ export function useMessageStream({
   const { data: messages, mutate } = useSWR<Message[]>([chatKey, 'messages'], null, {
     fallbackData: initialMessages,
   });
+
+  const [notifications, setNotifications] = useState<NotificationEvent[]>([]);
 
   // expose a way to update the body so we can update the session id when CLE occurs
   const updateMessageStreamBody = useCallback((newBody: object) => {
@@ -200,7 +204,7 @@ export function useMessageStream({
 
   // Process the SSE stream from the server
   const processMessageStream = useCallback(
-    async (response: Response, currentMessages: Message[]) => {
+    async (response: Response, currentMessages: Message[], notifications: NotificationEvent[]) => {
       if (!response.body) {
         throw new Error('Response body is empty');
       }
@@ -256,6 +260,10 @@ export function useMessageStream({
                   }
 
                   case 'Notification': {
+                    const newNotification = {
+                      ...parsedEvent,
+                    };
+                    setNotifications((prev) => [...prev, newNotification]);
                     break;
                   }
 
@@ -530,5 +538,6 @@ export function useMessageStream({
     isLoading: isLoading || false,
     addToolResult,
     updateMessageStreamBody,
+    notifications,
   };
 }
