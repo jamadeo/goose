@@ -4,9 +4,13 @@ use std::{
 };
 
 use futures::{Future, Stream};
-use mcp_core::protocol::{JsonRpcError, JsonRpcMessage, JsonRpcRequest, JsonRpcResponse};
+use mcp_core::protocol::{JsonRpcError, JsonRpcMessage, JsonRpcResponse};
 use pin_project::pin_project;
-use tokio::io::{AsyncBufReadExt, AsyncRead, AsyncWrite, AsyncWriteExt, BufReader};
+use router::McpRequest;
+use tokio::{
+    io::{AsyncBufReadExt, AsyncRead, AsyncWrite, AsyncWriteExt, BufReader},
+    sync::mpsc,
+};
 use tower_service::Service;
 
 mod errors;
@@ -123,7 +127,7 @@ pub struct Server<S> {
 
 impl<S> Server<S>
 where
-    S: Service<JsonRpcRequest, Response = JsonRpcResponse> + Send,
+    S: Service<McpRequest, Response = JsonRpcResponse> + Send,
     S::Error: Into<BoxError>,
     S::Future: Send,
 {
@@ -160,7 +164,21 @@ where
                             );
 
                             // Process the request using our service
-                            let response = match service.call(request).await {
+                            let (notify_tx, mut notify_rx) = mpsc::channel(256);
+                            let mcp_request = McpRequest {
+                                request,
+                                notifier: notify_tx,
+                            };
+
+                            eprintln!("Processing messages");
+                            while let Some(notification) = notify_rx.recv().await {
+                                eprintln!("Received msg ");
+                                if let Err(e) = transport.write_message(notification).await {
+                                    return Err(ServerError::Transport(TransportError::Io(e)));
+                                }
+                            }
+
+                            let response = match service.call(mcp_request).await {
                                 Ok(resp) => resp,
                                 Err(e) => {
                                     let error_msg = e.into().to_string();
@@ -247,7 +265,7 @@ where
 // Any router implements this
 pub trait BoundedService:
     Service<
-        JsonRpcRequest,
+        McpRequest,
         Response = JsonRpcResponse,
         Error = BoxError,
         Future = Pin<Box<dyn Future<Output = Result<JsonRpcResponse, BoxError>> + Send>>,
@@ -259,7 +277,7 @@ pub trait BoundedService:
 // Implement it for any type that meets the bounds
 impl<T> BoundedService for T where
     T: Service<
-            JsonRpcRequest,
+            McpRequest,
             Response = JsonRpcResponse,
             Error = BoxError,
             Future = Pin<Box<dyn Future<Output = Result<JsonRpcResponse, BoxError>> + Send>>,

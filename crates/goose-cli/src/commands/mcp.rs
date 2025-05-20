@@ -21,7 +21,7 @@ pub async fn run_server(name: &str) -> Result<()> {
     // Initialize logging
     crate::logging::setup_logging(Some(&format!("mcp-{name}")), None)?;
 
-    tracing::info!("Starting MCP server");
+    // tracing::info!("Starting MCP server");
 
     let router: Option<Box<dyn BoundedService>> = match name {
         "developer" => Some(Box::new(RouterService(DeveloperRouter::new()))),

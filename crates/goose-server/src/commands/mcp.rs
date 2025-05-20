@@ -11,7 +11,7 @@ pub async fn run(name: &str) -> Result<()> {
     // Initialize logging
     crate::logging::setup_logging(Some(&format!("mcp-{name}")))?;
 
-    tracing::info!("Starting MCP server");
+    // tracing::info!("Starting MCP server");
     let router: Option<Box<dyn BoundedService>> = match name {
         "developer" => Some(Box::new(RouterService(DeveloperRouter::new()))),
         "computercontroller" => Some(Box::new(RouterService(ComputerControllerRouter::new()))),
@@ -29,6 +29,6 @@ pub async fn run(name: &str) -> Result<()> {
     let server = Server::new(router.unwrap_or_else(|| panic!("Unknown server requested {}", name)));
     let transport = ByteTransport::new(stdin(), stdout());
 
-    tracing::info!("Server initialized and ready to handle requests");
+    // tracing::info!("Server initialized and ready to handle requests");
     Ok(server.run(transport).await?)
 }

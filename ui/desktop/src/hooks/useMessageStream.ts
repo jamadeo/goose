@@ -6,11 +6,17 @@ import { Message, createUserMessage, hasCompletedToolCalls } from '../types/mess
 // Ensure TextDecoder is available in the global scope
 const TextDecoder = globalThis.TextDecoder;
 
+interface NotificationEvent {
+  type: 'Notification';
+  [key: string]: unknown;
+}
+
 // Event types for SSE stream
 type MessageEvent =
   | { type: 'Message'; message: Message }
   | { type: 'Error'; error: string }
-  | { type: 'Finish'; reason: string };
+  | { type: 'Finish'; reason: string }
+  | NotificationEvent;
 
 export interface UseMessageStreamOptions {
   /**
@@ -246,6 +252,10 @@ export function useMessageStream({
                     // Update messages with the new message
                     currentMessages = [...currentMessages, newMessage];
                     mutate(currentMessages, false);
+                    break;
+                  }
+
+                  case 'Notification': {
                     break;
                   }
 
