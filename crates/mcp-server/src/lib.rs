@@ -136,7 +136,10 @@ where
     }
 
     // TODO transport trait instead of byte transport if we implement others
-    pub async fn run<R, W>(self, mut transport: ByteTransport<R, W>) -> Result<(), ServerError>
+    pub async fn run<R: Send + 'static, W: Send + 'static>(
+        self,
+        mut transport: ByteTransport<R, W>,
+    ) -> Result<(), ServerError>
     where
         R: AsyncRead + Unpin,
         W: AsyncWrite + Unpin,
@@ -171,12 +174,15 @@ where
                             };
 
                             eprintln!("Processing messages");
-                            while let Some(notification) = notify_rx.recv().await {
-                                eprintln!("Received msg ");
-                                if let Err(e) = transport.write_message(notification).await {
-                                    return Err(ServerError::Transport(TransportError::Io(e)));
+                            let transport_fut = tokio::spawn(async move {
+                                while let Some(notification) = notify_rx.recv().await {
+                                    eprintln!("Received msg ");
+                                    if let Err(_) = transport.write_message(notification).await {
+                                        break;
+                                    }
                                 }
-                            }
+                                transport
+                            });
 
                             let response = match service.call(mcp_request).await {
                                 Ok(resp) => resp,
@@ -193,6 +199,16 @@ where
                                             data: None,
                                         }),
                                     }
+                                }
+                            };
+
+                            transport = match transport_fut.await {
+                                Ok(transport) => transport,
+                                Err(e) => {
+                                    tracing::error!(error = %e, "Failed to spawn transport task");
+                                    return Err(ServerError::Transport(TransportError::Io(
+                                        e.into(),
+                                    )));
                                 }
                             };
 

@@ -114,6 +114,11 @@ impl StdioActor {
                             "Received incoming message"
                         );
                         let _ = sender.send(message).await;
+                    } else {
+                        tracing::warn!(
+                            message = ?line,
+                            "Failed to parse incoming message"
+                        );
                     }
                     line.clear();
                 }
