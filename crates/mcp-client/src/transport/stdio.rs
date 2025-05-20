@@ -108,18 +108,12 @@ impl StdioActor {
                     break;
                 } // EOF
                 Ok(_) => {
-                    match serde_json::from_str::<JsonRpcMessage>(&line) {
-                        Ok(message) => {
-                            tracing::debug!(
-                                message = ?message,
-                                "Received incoming message"
-                            );
-                            let _ = sender.send(message).await;
-                        }
-                        Err(e) => {
-                            tracing::error!(error = ?e, "Error parsing JSON-RPC message");
-                            continue;
-                        }
+                    if let Ok(message) = serde_json::from_str::<JsonRpcMessage>(&line) {
+                        tracing::debug!(
+                            message = ?message,
+                            "Received incoming message"
+                        );
+                        let _ = sender.send(message).await;
                     }
                     line.clear();
                 }
