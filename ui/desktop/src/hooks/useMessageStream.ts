@@ -6,9 +6,17 @@ import { Message, createUserMessage, hasCompletedToolCalls } from '../types/mess
 // Ensure TextDecoder is available in the global scope
 const TextDecoder = globalThis.TextDecoder;
 
-interface NotificationEvent {
+type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
+
+export interface NotificationEvent {
   type: 'Notification';
-  [key: string]: unknown;
+  request_id: string;
+  message: {
+    method: string;
+    params: {
+      [key: string]: JsonValue;
+    };
+  };
 }
 
 // Event types for SSE stream
@@ -204,7 +212,7 @@ export function useMessageStream({
 
   // Process the SSE stream from the server
   const processMessageStream = useCallback(
-    async (response: Response, currentMessages: Message[], notifications: NotificationEvent[]) => {
+    async (response: Response, currentMessages: Message[]) => {
       if (!response.body) {
         throw new Error('Response body is empty');
       }

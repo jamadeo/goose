@@ -56,7 +56,7 @@ pub struct Agent {
 #[derive(Clone)]
 pub enum AgentEvent {
     Message(Message),
-    Notification(JsonRpcMessage),
+    McpNotification((String, JsonRpcMessage)),
 }
 
 impl Agent {
@@ -567,7 +567,7 @@ impl Agent {
                                         *response = response.clone().with_tool_response(request_id, output);
                                     },
                                     ToolStreamItem::Message(msg) => {
-                                        yield AgentEvent::Notification(msg)
+                                        yield AgentEvent::McpNotification((request_id, msg))
                                     }
                                 }
                             }

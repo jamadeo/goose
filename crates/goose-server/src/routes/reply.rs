@@ -82,10 +82,19 @@ impl IntoResponse for SseResponse {
 #[derive(Debug, Serialize)]
 #[serde(tag = "type")]
 enum MessageEvent {
-    Message { message: Message },
-    Error { error: String },
-    Finish { reason: String },
-    Notification(JsonRpcMessage), // TODO
+    Message {
+        message: Message,
+    },
+    Error {
+        error: String,
+    },
+    Finish {
+        reason: String,
+    },
+    Notification {
+        request_id: String,
+        message: JsonRpcMessage,
+    },
 }
 
 // Stream a message as an SSE event
@@ -232,8 +241,11 @@ async fn handler(
                                 }
                             });
                         }
-                        Ok(Some(Ok(AgentEvent::Notification(n)))) => {
-                            if let Err(e) = stream_event(MessageEvent::Notification(n), &tx).await {
+                        Ok(Some(Ok(AgentEvent::McpNotification((request_id, n))))) => {
+                            if let Err(e) = stream_event(MessageEvent::Notification{
+                                request_id: request_id.clone(),
+                                message: n,
+                            }, &tx).await {
                                 tracing::error!("Error sending message through channel: {}", e);
                                 let _ = stream_event(
                                     MessageEvent::Error {
@@ -354,7 +366,7 @@ async fn ask_handler(
                     }
                 }
             }
-            Ok(AgentEvent::Notification(n)) => {
+            Ok(AgentEvent::McpNotification(n)) => {
                 // Handle notifications if needed
                 tracing::info!("Received notification: {:?}", n);
             }

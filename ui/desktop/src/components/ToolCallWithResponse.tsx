@@ -6,17 +6,20 @@ import { Content, ToolRequestMessageContent, ToolResponseMessageContent } from '
 import { snakeToTitleCase } from '../utils';
 import Dot, { LoadingStatus } from './ui/Dot';
 import Expand from './ui/Expand';
+import { NotificationEvent } from '../hooks/useMessageStream';
 
 interface ToolCallWithResponseProps {
   isCancelledMessage: boolean;
   toolRequest: ToolRequestMessageContent;
   toolResponse?: ToolResponseMessageContent;
+  notifications?: NotificationEvent[];
 }
 
 export default function ToolCallWithResponse({
   isCancelledMessage,
   toolRequest,
   toolResponse,
+  notifications,
 }: ToolCallWithResponseProps) {
   const toolCall = toolRequest.toolCall.status === 'success' ? toolRequest.toolCall.value : null;
   if (!toolCall) {
@@ -26,7 +29,7 @@ export default function ToolCallWithResponse({
   return (
     <div className={'w-full text-textSubtle text-sm'}>
       <Card className="">
-        <ToolCallView {...{ isCancelledMessage, toolCall, toolResponse }} />
+        <ToolCallView {...{ isCancelledMessage, toolCall, toolResponse, notifications }} />
       </Card>
     </div>
   );
@@ -47,8 +50,9 @@ function ToolCallExpandable({
   children,
   className = '',
 }: ToolCallExpandableProps) {
-  const [isExpanded, setIsExpanded] = React.useState(isStartExpanded);
-  const toggleExpand = () => setIsExpanded((prev) => !prev);
+  const [isExpandedState, setIsExpanded] = React.useState<boolean | null>(null);
+  const isExpanded = isExpandedState === null ? isStartExpanded : isExpandedState;
+  const toggleExpand = () => setIsExpanded(!isExpanded);
   React.useEffect(() => {
     if (isForceExpand) setIsExpanded(true);
   }, [isForceExpand]);
@@ -71,9 +75,36 @@ interface ToolCallViewProps {
     arguments: Record<string, unknown>;
   };
   toolResponse?: ToolResponseMessageContent;
+  notifications?: NotificationEvent[];
 }
 
-function ToolCallView({ isCancelledMessage, toolCall, toolResponse }: ToolCallViewProps) {
+interface Progress {
+  progress: number;
+  progressToken: string;
+  total?: number;
+  message?: string;
+}
+
+const logToString = (logMessage: NotificationEvent) => {
+  const params = logMessage.message.params;
+  if (params && params.data && typeof params.data === 'object' && 'output' in params.data) {
+    if (params.data.output) {
+      return params.data.output;
+    }
+    return typeof params.data === 'string' ? params.data : JSON.stringify(params.data);
+  }
+  return '';
+};
+
+const notificationToProgress = (notification: NotificationEvent): Progress =>
+  notification.message.params as unknown as Progress;
+
+function ToolCallView({
+  isCancelledMessage,
+  toolCall,
+  toolResponse,
+  notifications,
+}: ToolCallViewProps) {
   const responseStyle = localStorage.getItem('response_style');
   const isExpandToolDetails = (() => {
     switch (responseStyle) {
@@ -102,6 +133,26 @@ function ToolCallView({ isCancelledMessage, toolCall, toolResponse }: ToolCallVi
             isExpandToolResults: ((item.annotations?.priority as number | undefined) ?? -1) >= 0.5,
           }))
       : [];
+
+  const logs = notifications
+    ?.filter((notification) => notification.message.method === 'notifications/message')
+    .map(logToString);
+
+  const progress = notifications
+    ?.filter((notification) => notification.message.method === 'notifications/progress')
+    .map(notificationToProgress)
+    .reduce((map, item) => {
+      const key = item.progressToken;
+      if (!map.has(key)) {
+        map.set(key, []);
+      }
+      map.get(key)!.push(item);
+      return map;
+    }, new Map<string, Progress[]>());
+
+  const progressEntries = [...(progress?.values() || [])].map(
+    (entries) => entries.sort((a, b) => b.progress - a.progress)[0]
+  );
 
   const isShouldExpand = isExpandToolDetails || toolResults.some((v) => v.isExpandToolResults);
 
@@ -175,6 +226,18 @@ function ToolCallView({ isCancelledMessage, toolCall, toolResponse }: ToolCallVi
           })}
         </>
       )}
+
+      {logs && logs.length > 0 && (
+        <ToolLogsView logs={logs} isStartExpanded={toolResults.length === 0} />
+      )}
+
+      {toolResults.length === 0 &&
+        progressEntries.length > 0 &&
+        progressEntries.map((entry, index) => (
+          <div className="p-2" key={index}>
+            <ProgressBar progress={entry.progress} total={entry.total} message={entry.message} />
+          </div>
+        ))}
     </ToolCallExpandable>
   );
 }
@@ -234,3 +297,41 @@ function ToolResultView({ result, isStartExpanded }: ToolResultViewProps) {
     </ToolCallExpandable>
   );
 }
+
+function ToolLogsView({ logs, isStartExpanded }: { logs: string[]; isStartExpanded?: boolean }) {
+  return (
+    <ToolCallExpandable
+      label="Logs"
+      className="bg-bgStandard pl-[19px] mt-1"
+      isStartExpanded={isStartExpanded}
+    >
+      {logs.map((log, index) => (
+        <div key={index} className="text-sm font-mono bg-bgApp p-[2px] max-h-[10vh] overflow-auto">
+          {log}
+        </div>
+      ))}
+    </ToolCallExpandable>
+  );
+}
+
+const ProgressBar = ({ progress, total, message }: Omit<Progress, 'progressToken'>) => {
+  const isDeterminate = typeof total === 'number';
+  const percent = isDeterminate ? Math.min((progress / total!) * 100, 100) : 0;
+
+  return (
+    <div className="w-full space-y-2">
+      {message && <div className="text-sm text-gray-700">{message}</div>}
+
+      <div className="w-full bg-gray-200 rounded-full h-4 overflow-hidden relative">
+        {isDeterminate ? (
+          <div
+            className="bg-blue-500 h-full transition-all duration-300"
+            style={{ width: `${percent}%` }}
+          />
+        ) : (
+          <div className="absolute inset-0 animate-indeterminate bg-blue-500" />
+        )}
+      </div>
+    </div>
+  );
+};

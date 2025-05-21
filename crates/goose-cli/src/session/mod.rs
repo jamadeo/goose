@@ -762,7 +762,7 @@ impl Session {
                                 if interactive {output::show_thinking()};
                             }
                         }
-                        Some(Ok(AgentEvent::Notification(n))) => {
+                        Some(Ok(AgentEvent::McpNotification(n))) => {
                             println!("Handle notification: {:?}", n);
                         }
                         Some(Err(e)) => {

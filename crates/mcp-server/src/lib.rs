@@ -173,10 +173,8 @@ where
                                 notifier: notify_tx,
                             };
 
-                            eprintln!("Processing messages");
                             let transport_fut = tokio::spawn(async move {
                                 while let Some(notification) = notify_rx.recv().await {
-                                    eprintln!("Received msg ");
                                     if let Err(_) = transport.write_message(notification).await {
                                         break;
                                     }

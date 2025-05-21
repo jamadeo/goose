@@ -478,6 +478,15 @@ function ChatContent({
     e.preventDefault();
   };
 
+  const toolCallNotifications = notifications.reduce((map, item) => {
+    const key = item.request_id;
+    if (!map.has(key)) {
+      map.set(key, []);
+    }
+    map.get(key).push(item);
+    return map;
+  }, new Map());
+
   return (
     <div className="flex flex-col w-full h-screen items-center justify-center">
       {/* Loader when generating recipe */}
@@ -557,6 +566,7 @@ function ChatContent({
                             const updatedMessages = [...messages, newMessage];
                             setMessages(updatedMessages);
                           }}
+                          toolCallNotifications={toolCallNotifications}
                         />
                       )}
                     </>
@@ -565,18 +575,6 @@ function ChatContent({
               ))}
             </SearchView>
 
-{/* TODO: not this of course! just wiring it up */}
-            {notifications.map((notification, index) => (
-              <div
-                key={index}
-                className="flex flex-col items-center justify-center p-4"
-                data-testid="notification"
-              >
-                <div className="text-blue-700 dark:text-blue-300 bg-blue-400/50 p-3 rounded-lg mb-2">
-                  {(notification as any).params.data.output as string}
-                </div>
-              </div>
-            ))}
             {error && (
               <div className="flex flex-col items-center justify-center p-4">
                 <div className="text-red-700 dark:text-red-300 bg-red-400/50 p-3 rounded-lg mb-2">
