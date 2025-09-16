@@ -16,7 +16,7 @@
             <description><![CDATA[Did you know you can call recipes from within other recipes? Learn how to orchestrate multiple AI tasks using goose subrecipes.]]></description>
             <content:encoded><![CDATA[<p><img decoding="async" loading="lazy" alt="goose Subrecipes" src="https://block.github.io/goose/pr-preview/pr-4647/assets/images/goose-subrecipes-1ca4aa4dfeff06727aaaadd9b01141fb.png" width="2864" height="1503" class="img_ev3q"></p>
 <p>Remember when you first learned to cook? You probably started with simple recipes like scrambled eggs or toast. But eventually you wanted to make something more complex, like a full dinner with multiple dishes. That's how subrecipes work in goose: each recipe can run stand-alone for a dedicated task, and a main recipe can orchestrate how they run.</p>
-<p>Let's explore goose subrecipes together! You're about to learn know how to orchestrate multiple AI models, coordinate tasks, and build workflows that will turn you into a "head chef" user with goose.</p>
+<p>Let's explore <a href="https://block.github.io/goose/pr-preview/pr-4647/docs/tutorials/sub-recipes-in-parallel">goose subrecipes</a> together! You're about to learn know how to orchestrate multiple AI models, coordinate tasks, and build workflows that will turn you into a "head chef" user with goose.</p>
 <h2 class="anchor anchorWithStickyNavbar_LWe7" id="why-subrecipes-matter">Why Subrecipes Matter<a href="https://block.github.io/goose/pr-preview/pr-4647/blog/2025/09/15/subrecipes-in-goose#why-subrecipes-matter" class="hash-link" aria-label="Direct link to Why Subrecipes Matter" title="Direct link to Why Subrecipes Matter">​</a></h2>
 <p>Think of subrecipes like having a team of specialized chefs in your kitchen. One chef is amazing at making desserts, another excels at grilling, and a third is the salad master. Instead of having one person try to do everything, you let each specialist focus on what they do best.</p>
 <p>That's exactly what subrecipes do for your goose workflows. You can have one recipe that's optimized for creative tasks like image generation, another that's perfect for technical documentation, and a third that excels at writing code. Then you orchestrate them all from a main recipe.</p>
@@ -69,18 +69,6 @@
 <p>Ready to start building your own subrecipe workflows? The kitchen is open, and all the ingredients are waiting for you.</p>
 <h2 class="anchor anchorWithStickyNavbar_LWe7" id="share-your-recipes-with-us">Share Your Recipes with Us!<a href="https://block.github.io/goose/pr-preview/pr-4647/blog/2025/09/15/subrecipes-in-goose#share-your-recipes-with-us" class="hash-link" aria-label="Direct link to Share Your Recipes with Us!" title="Direct link to Share Your Recipes with Us!">​</a></h2>
 <p>Make a <a href="https://github.com/block/goose" target="_blank" rel="noopener noreferrer">pull request to goose</a> to include your recipe ideas with other goose users! Add them to the <code>documentation/src/pages/recipes/data/recipes</code> path in the goose GitHub repo.</p>
-<hr>
-<h2 class="anchor anchorWithStickyNavbar_LWe7" id="faq">FAQ<a href="https://block.github.io/goose/pr-preview/pr-4647/blog/2025/09/15/subrecipes-in-goose#faq" class="hash-link" aria-label="Direct link to FAQ" title="Direct link to FAQ">​</a></h2>
-<p><strong>Q: Can subrecipes call other subrecipes?</strong>
-A: No, a recipe running as a subrecipe cannot itself call other subrecipes. This keeps the workflow manageable and avoids deep nesting or looping recipes ending in infinite recursion.</p>
-<p><strong>Q: How do I debug a failing subrecipe workflow?</strong>
-A: Test each subrecipe individually first, check parameter passing, and use the retry logic with proper checks.</p>
-<p><strong>Q: Can I use different AI models in different subrecipes?</strong>
-A: Absolutely! This is one of the main benefits -- use the best model for each specific task.</p>
-<p><strong>Q: What happens if one subrecipe fails?</strong>
-A: The parent recipe will typically fail too, unless you build in error handling. Always test individual recipes first.</p>
-<p><strong>Q: How do I share data between subrecipes?</strong>
-A: Use the template variable <code>{{ recipe_dir }}</code> within each recipe's instructions to share filenames. Just be careful of concurrent writes to the same files if you have some subrecipes running in parallel.</p>
 ]]></content:encoded>
         </item>
         <item>
