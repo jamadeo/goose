@@ -68,7 +68,14 @@
 <p>Each recipe becomes a reusable component that you can mix and match. Build a library of specialized recipes, then combine them in different ways for different projects. It's like having a toolkit of AI specialists ready to tackle any challenge.</p>
 <p>Ready to start building your own subrecipe workflows? The kitchen is open, and all the ingredients are waiting for you.</p>
 <h2 class="anchor anchorWithStickyNavbar_LWe7" id="share-your-recipes-with-us">Share Your Recipes with Us!<a href="https://block.github.io/goose/pr-preview/pr-4647/blog/2025/09/15/subrecipes-in-goose#share-your-recipes-with-us" class="hash-link" aria-label="Direct link to Share Your Recipes with Us!" title="Direct link to Share Your Recipes with Us!">​</a></h2>
-<p>Make a <a href="https://github.com/block/goose" target="_blank" rel="noopener noreferrer">pull request to goose</a> to include your recipe ideas with other goose users! Add them to the <code>documentation/src/pages/recipes/data/recipes</code> path in the goose GitHub repo.</p>
+<p>Do you have a recipe you'd like to share with the community? We'd love to feature them in our <a href="https://block.github.io/goose/recipes/" target="_blank" rel="noopener noreferrer">Recipe Cookbook</a>!
+<strong>How to contribute:</strong></p>
+<ol>
+<li><a href="https://github.com/block/goose/fork" target="_blank" rel="noopener noreferrer">Fork the goose repository</a></li>
+<li>Add your recipe YAML file to the <a href="https://github.com/block/goose/tree/main/documentation/src/pages/recipes/data/recipes" target="_blank" rel="noopener noreferrer"><code>documentation/src/pages/recipes/data/recipes/</code></a> directory</li>
+<li>Create a pull request following our <a href="https://github.com/block/goose/blob/main/CONTRIBUTING_RECIPES.md" target="_blank" rel="noopener noreferrer">Recipe Contribution Guide</a>
+Browse <a href="https://github.com/block/goose/tree/main/documentation/src/pages/recipes/data/recipes" target="_blank" rel="noopener noreferrer">existing recipes</a> for inspiration and formatting examples.</li>
+</ol>
 ]]></content:encoded>
         </item>
         <item>
