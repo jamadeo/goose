@@ -10,7 +10,7 @@
 <link rel="preconnect" href="https://www.googletagmanager.com">
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-ZS5D6SB4ZJ"></script>
 <script>function gtag(){dataLayer.push(arguments)}window.dataLayer=window.dataLayer||[],gtag("js",new Date),gtag("config","G-ZS5D6SB4ZJ",{anonymize_ip:!0})</script><link rel="stylesheet" href="/goose/assets/css/styles.0d1f901f.css">
-<script src="/goose/assets/js/runtime~main.efc30a45.js" defer="defer"></script>
+<script src="/goose/assets/js/runtime~main.64a31d98.js" defer="defer"></script>
 <script src="/goose/assets/js/main.6f25c9f3.js" defer="defer"></script>
 </head>
 <body class="navigation-with-keyboard">
@@ -59,8 +59,16 @@
 <div class="theme-admonition theme-admonition-important admonition_xJq3 alert alert--info"><div class="admonitionHeading_Gvgb"><span class="admonitionIcon_Rf37"><svg viewBox="0 0 14 16"><path fill-rule="evenodd" d="M7 2.3c3.14 0 5.7 2.56 5.7 5.7s-2.56 5.7-5.7 5.7A5.71 5.71 0 0 1 1.3 8c0-3.14 2.56-5.7 5.7-5.7zM7 1C3.14 1 0 4.14 0 8s3.14 7 7 7 7-3.14 7-7-3.14-7-7-7zm1 3H6v5h2V4zm0 6H6v2h2v-2z"></path></svg></span>important</div><div class="admonitionContent_BuS1"><ul>
 <li>Optional parameters MUST have a default value specified</li>
 <li>Required parameters cannot have default values</li>
+<li>File parameters cannot have default values regardless of requirement type</li>
 <li>Parameter keys must match any template variables used in instructions or prompt</li>
 </ul></div></div>
+<h4 class="anchor anchorWithStickyNavbar_LWe7" id="file-parameter-type">File Parameter Type<a href="#file-parameter-type" class="hash-link" aria-label="Direct link to File Parameter Type" title="Direct link to File Parameter Type">​</a></h4>
+<p>When using <code>input_type: file</code>, the parameter value should be a file path. At recipe execution time, Goose will:</p>
+<ol>
+<li><strong>Read the file contents</strong> from the provided path</li>
+<li><strong>Replace the parameter</strong> with the actual file contents in the recipe template</li>
+</ol>
+<p><strong>Security Consideration</strong>: File parameters <strong>cannot have default values</strong> to prevent unintended importing of sensitive files</p>
 <h2 class="anchor anchorWithStickyNavbar_LWe7" id="extensions">Extensions<a href="#extensions" class="hash-link" aria-label="Direct link to Extensions" title="Direct link to Extensions">​</a></h2>
 <p>The <code>extensions</code> field allows you to specify which Model Context Protocol (MCP) servers and other extensions the recipe needs to function. Each extension in the array has the following structure:</p>
 <h3 class="anchor anchorWithStickyNavbar_LWe7" id="extension-fields">Extension Fields<a href="#extension-fields" class="hash-link" aria-label="Direct link to Extension Fields" title="Direct link to Extension Fields">​</a></h3>
