@@ -10,7 +10,7 @@
 <link rel="preconnect" href="https://www.googletagmanager.com">
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-ZS5D6SB4ZJ"></script>
 <script>function gtag(){dataLayer.push(arguments)}window.dataLayer=window.dataLayer||[],gtag("js",new Date),gtag("config","G-ZS5D6SB4ZJ",{anonymize_ip:!0})</script><link rel="stylesheet" href="/goose/pr-preview/pr-5038/assets/css/styles.d623a81a.css">
-<script src="/goose/pr-preview/pr-5038/assets/js/runtime~main.2f82e620.js" defer="defer"></script>
+<script src="/goose/pr-preview/pr-5038/assets/js/runtime~main.802ea492.js" defer="defer"></script>
 <script src="/goose/pr-preview/pr-5038/assets/js/main.1c975e74.js" defer="defer"></script>
 </head>
 <body class="navigation-with-keyboard">
@@ -18,7 +18,7 @@
 <p>You&#x27;ve been using goose for weeks, maybe months. You have dozens of successful <a href="/goose/pr-preview/pr-5038/docs/guides/sessions/">sessions</a> where you asked for help with blog posts, code reviews, documentation, or data analysis. Each time you think &quot;Didn&#x27;t I already do this?&quot; but never get around to checking. Sound familiar?</p>
 <p>Myself, I had over a hundred goose sessions and as many megabytes of conversation data. I was sitting on a goldmine of potential automation. A coworker suggested something brilliant: &quot;What if goose could analyze your sessions and build recipes automatically?&quot; Wait, wait, wait!! Create a personalized cookbook based on my own session history?? Yes, please! Let&#x27;s build a &#x27;cookbook generator&#x27; recipe!</p>
 <h2 class="anchor anchorWithStickyNavbar_LWe7" id="the-problem-with-manual-recipe-creation">The Problem with Manual Recipe Creation<a href="#the-problem-with-manual-recipe-creation" class="hash-link" aria-label="Direct link to The Problem with Manual Recipe Creation" title="Direct link to The Problem with Manual Recipe Creation">​</a></h2>
-<p>Creating recipes manually is time-consuming, especially if you&#x27;re looking through dozens or hundreds of previous sessions like I was.</p>
+<p>Creating recipes manually is time-consuming, especially if you&#x27;re looking through dozens or hundreds of previous sessions like I was, to do the following:</p>
 <ul>
 <li>Figure out which sessions were successful or not</li>
 <li>Extract the core workflow from lengthy conversations</li>
@@ -27,7 +27,7 @@
 <li>Test and refine the recipe structure</li>
 </ul>
 <p>Isn&#x27;t this the goal of having an AI agent in the first place? To save time and effort?</p>
-<p>Let&#x27;s boose our productivity gains by implementing some automation. We&#x27;re gonna get goose to write a recipe to write OTHER recipes!</p>
+<p>Let&#x27;s boost our productivity by implementing some automation. We&#x27;re gonna get goose to write a recipe that creates OTHER recipes!</p>
 <h2 class="anchor anchorWithStickyNavbar_LWe7" id="what-is-the-cookbook-generator-recipe">What is the Cookbook Generator Recipe?<a href="#what-is-the-cookbook-generator-recipe" class="hash-link" aria-label="Direct link to What is the Cookbook Generator Recipe?" title="Direct link to What is the Cookbook Generator Recipe?">​</a></h2>
 <p>The &quot;cookbook generator&quot; I&#x27;m describing here is a way to get goose to look at your previous sessions, analyze them for commonalities, and automatically create new recipes from common patterns. It&#x27;s automation that creates automation -- meta-programming at its finest.</p>
 <p>I&#x27;m going to share my own cookbook generator at the end.</p>
@@ -81,7 +81,7 @@
 <li>Parameter validation and defaults</li>
 <li>Conditional logic for different scenarios</li>
 <li>Loop constructs for repetitive tasks</li>
-<li>Sub-recipe integration where appropriate</li>
+<li>Subrecipe integration where appropriate</li>
 </ul>
 <h2 class="anchor anchorWithStickyNavbar_LWe7" id="real-world-results">Real-World Results<a href="#real-world-results" class="hash-link" aria-label="Direct link to Real-World Results" title="Direct link to Real-World Results">​</a></h2>
 <p>Building the cookbook generator took a little over an hour of &quot;vibe prompting&quot; and refining the idea, and then goose gave me a recipe. I always verify my AI-generated work, and then spent about 15 minutes more after the livestream refining some ideas and adding more guardrails to the recipe.</p>
@@ -95,12 +95,13 @@
 </ul>
 <p>The recipes were about 90% workable, and I went through and refined some of those a bit further.</p>
 <h3 class="anchor anchorWithStickyNavbar_LWe7" id="do-the-recipes-actually-work-though">Do the recipes ACTUALLY work though?<a href="#do-the-recipes-actually-work-though" class="hash-link" aria-label="Direct link to Do the recipes ACTUALLY work though?" title="Direct link to Do the recipes ACTUALLY work though?">​</a></h3>
+<p>By running the outline generator recipe (three times), the image generator recipe, and social media recipe, goose took care of the following work:</p>
 <ul>
-<li>The outline for this blog post was created by the outline generator; I always hand-write my blog posts.</li>
-<li>The thumbnail on this blog post was generated in part by the image generator (the conveyor belt)</li>
-<li>You found this blog post because of the social media post generator; that&#x27;s 100% goose writing that for me!</li>
-<li>The short video you saw in the social media post that brought you here had its script outlined by the outline generator</li>
-<li>The longer YouTube video the outlines more of this was also outlined by the outline generator</li>
+<li>the outline for this blog post, so I could write the content faster</li>
+<li>the &quot;conveyor belt&quot; image at the top of this post (via Gemini)</li>
+<li>the social media posts you saw that brought you here</li>
+<li>the video script for the short video in the social media posts</li>
+<li>the script outline for a longer video going on our <a href="https://youtube.com/@goose-oss" target="_blank" rel="noopener noreferrer">YouTube channel</a></li>
 </ul>
 <p>So, yeah. They work!</p>
 <h2 class="anchor anchorWithStickyNavbar_LWe7" id="the-meta-automation-advantage">The Meta-Automation Advantage<a href="#the-meta-automation-advantage" class="hash-link" aria-label="Direct link to The Meta-Automation Advantage" title="Direct link to The Meta-Automation Advantage">​</a></h2>
