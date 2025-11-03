@@ -8,13 +8,28 @@ pub struct SearchPaths {
 
 impl SearchPaths {
     pub fn builder() -> Self {
-        let paths = Config::global()
+        let mut paths = Config::global()
             .get_goose_search_paths()
-            .unwrap_or_default()
-            .into_iter()
-            .map(|s| PathBuf::from(shellexpand::tilde(&s).as_ref()))
-            .collect();
-        Self { paths }
+            .unwrap_or_default();
+
+        #[cfg(unix)]
+        {
+            paths.push("/usr/local/bin".into());
+            if let Some(home) = dirs::home_dir() {
+                self.paths.push(home.join(".local/bin"));
+            }
+        }
+
+        if cfg!(target_os = "macos") {
+            paths.push("/opt/homebrew/bin".into());
+        }
+
+        Self {
+            paths: paths
+                .into_iter()
+                .map(|s| PathBuf::from(shellexpand::tilde(&s).as_ref()))
+                .collect(),
+        }
     }
 
     pub fn with_npm(mut self) -> Self {
@@ -23,13 +38,9 @@ impl SearchPaths {
                 self.paths.push(appdata.join("npm"));
             }
         } else {
-            self.paths.push(PathBuf::from("/usr/local/bin"));
-            self.paths.push(PathBuf::from("/opt/homebrew/bin"));
-
             if let Some(home) = dirs::home_dir() {
                 self.paths.push(home.join(".npm-global/bin"));
                 self.paths.push(home.join("node_modules/bin"));
-                self.paths.push(home.join(".local/bin"));
             }
         }
         self

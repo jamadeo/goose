@@ -2,7 +2,6 @@ use anyhow::Result;
 use async_trait::async_trait;
 use rmcp::model::Role;
 use serde_json::{json, Value};
-use std::path::PathBuf;
 use std::process::Stdio;
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::Command;
@@ -10,6 +9,7 @@ use tokio::process::Command;
 use super::base::{ConfigKey, Provider, ProviderMetadata, ProviderUsage, Usage};
 use super::errors::ProviderError;
 use super::utils::RequestLog;
+use crate::config::search_path::SearchPaths;
 use crate::conversation::message::{Message, MessageContent};
 use crate::model::ModelConfig;
 use rmcp::model::Tool;
@@ -32,71 +32,11 @@ impl CursorAgentProvider {
         let config = crate::config::Config::global();
         let command = config.get_cursor_agent_command();
 
-        let resolved_command = if !command.contains('/') {
-            Self::find_cursor_agent_executable(&command).unwrap_or(command)
-        } else {
-            command
-        };
-
         Ok(Self {
-            command: resolved_command,
+            command,
             model,
             name: Self::metadata().name,
         })
-    }
-
-    /// Search for cursor-agent executable in common installation locations
-    fn find_cursor_agent_executable(command_name: &str) -> Option<String> {
-        let home = std::env::var("HOME").ok()?;
-
-        let search_paths = vec![
-            format!("/opt/homebrew/bin/{}", command_name),
-            format!("/usr/bin/{}", command_name),
-            format!("/usr/local/bin/{}", command_name),
-            format!("{}/.local/bin/{}", home, command_name),
-            format!("{}/bin/{}", home, command_name),
-        ];
-
-        for path in search_paths {
-            let path_buf = PathBuf::from(&path);
-            if path_buf.exists() && path_buf.is_file() {
-                #[cfg(unix)]
-                {
-                    use std::os::unix::fs::PermissionsExt;
-                    if let Ok(metadata) = std::fs::metadata(&path_buf) {
-                        let permissions = metadata.permissions();
-                        if permissions.mode() & 0o111 != 0 {
-                            tracing::info!("Found cursor-agent executable at: {}", path);
-                            return Some(path);
-                        }
-                    }
-                }
-                #[cfg(not(unix))]
-                {
-                    tracing::info!("Found cursor-agent executable at: {}", path);
-                    return Some(path);
-                }
-            }
-        }
-
-        if let Ok(path_var) = std::env::var("PATH") {
-            #[cfg(unix)]
-            let path_separator = ':';
-            #[cfg(windows)]
-            let path_separator = ';';
-
-            for dir in path_var.split(path_separator) {
-                let path_buf = PathBuf::from(dir).join(command_name);
-                if path_buf.exists() && path_buf.is_file() {
-                    let full_path = path_buf.to_string_lossy().to_string();
-                    tracing::info!("Found cursor-agent executable in PATH at: {}", full_path);
-                    return Some(full_path);
-                }
-            }
-        }
-
-        tracing::warn!("Could not find cursor-agent executable in common locations");
-        None
     }
 
     /// Filter out the Extensions section from the system prompt
@@ -262,6 +202,10 @@ impl CursorAgentProvider {
         }
 
         let mut cmd = Command::new(&self.command);
+
+        if let Ok(path) = SearchPaths::builder().with_npm().env_var() {
+            cmd.env("PATH", path);
+        }
 
         // Only pass model parameter if it's in the known models list
         if CURSOR_AGENT_KNOWN_MODELS.contains(&self.model.model_name.as_str()) {
