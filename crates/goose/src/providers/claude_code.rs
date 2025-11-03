@@ -10,15 +10,36 @@ use tokio::process::Command;
 use super::base::{ConfigKey, Provider, ProviderMetadata, ProviderUsage, Usage};
 use super::errors::ProviderError;
 use super::utils::RequestLog;
+use crate::config::search_path::search_path_var_with_extra;
 use crate::config::{Config, GooseMode};
 use crate::conversation::message::{Message, MessageContent};
 use crate::model::ModelConfig;
+use dirs;
 use rmcp::model::Tool;
 
 pub const CLAUDE_CODE_DEFAULT_MODEL: &str = "claude-sonnet-4-20250514";
 pub const CLAUDE_CODE_KNOWN_MODELS: &[&str] = &["sonnet", "opus", "claude-sonnet-4-20250514"];
 
 pub const CLAUDE_CODE_DOC_URL: &str = "https://claude.ai/cli";
+
+fn get_claude_code_search_paths() -> Vec<PathBuf> {
+    let mut paths = Vec::new();
+    if cfg!(windows) {
+        if let Some(data_local_dir) = dirs::data_local_dir() {
+            paths.push(data_local_dir.join("Programs").join("Claude Code"))
+        }
+    } else {
+        if let Some(home) = dirs::home_dir() {
+            paths.push(home.join(".claude/local"));
+            paths.push(home.join(".local/bin"));
+            paths.push(home.join("bin"));
+        }
+        paths.push(PathBuf::from("/usr/local/bin"));
+        paths.push(PathBuf::from("/usr/bin"));
+        paths.push(PathBuf::from("/opt/claude"));
+    }
+    paths
+}
 
 #[derive(Debug, serde::Serialize)]
 pub struct ClaudeCodeProvider {
@@ -31,76 +52,20 @@ pub struct ClaudeCodeProvider {
 impl ClaudeCodeProvider {
     pub async fn from_env(model: ModelConfig) -> Result<Self> {
         let config = crate::config::Config::global();
-        let command: String = config
-            .get_param("CLAUDE_CODE_COMMAND")
-            .unwrap_or_else(|_| "claude".to_string());
-
-        let resolved_command = if !command.contains('/') {
-            Self::find_claude_executable(&command).unwrap_or(command)
-        } else {
-            command
-        };
+        let command: String = config.get_param("CLAUDE_CODE_COMMAND").unwrap_or_else(|_| {
+            if cfg!(windows) {
+                "claude.cmd"
+            } else {
+                "claude"
+            }
+            .to_string()
+        });
 
         Ok(Self {
-            command: resolved_command,
+            command,
             model,
             name: Self::metadata().name,
         })
-    }
-
-    /// Search for claude executable in common installation locations
-    fn find_claude_executable(command_name: &str) -> Option<String> {
-        let home = std::env::var("HOME").ok()?;
-
-        let search_paths = vec![
-            format!("{}/.claude/local/{}", home, command_name),
-            format!("{}/.local/bin/{}", home, command_name),
-            format!("{}/bin/{}", home, command_name),
-            format!("/usr/local/bin/{}", command_name),
-            format!("/usr/bin/{}", command_name),
-            format!("/opt/claude/{}", command_name),
-        ];
-
-        for path in search_paths {
-            let path_buf = PathBuf::from(&path);
-            if path_buf.exists() && path_buf.is_file() {
-                #[cfg(unix)]
-                {
-                    use std::os::unix::fs::PermissionsExt;
-                    if let Ok(metadata) = std::fs::metadata(&path_buf) {
-                        let permissions = metadata.permissions();
-                        if permissions.mode() & 0o111 != 0 {
-                            tracing::info!("Found claude executable at: {}", path);
-                            return Some(path);
-                        }
-                    }
-                }
-                #[cfg(not(unix))]
-                {
-                    tracing::info!("Found claude executable at: {}", path);
-                    return Some(path);
-                }
-            }
-        }
-
-        if let Ok(path_var) = std::env::var("PATH") {
-            #[cfg(unix)]
-            let path_separator = ':';
-            #[cfg(windows)]
-            let path_separator = ';';
-
-            for dir in path_var.split(path_separator) {
-                let path_buf = PathBuf::from(dir).join(command_name);
-                if path_buf.exists() && path_buf.is_file() {
-                    let full_path = path_buf.to_string_lossy().to_string();
-                    tracing::info!("Found claude executable in PATH at: {}", full_path);
-                    return Some(full_path);
-                }
-            }
-        }
-
-        tracing::warn!("Could not find claude executable in common locations");
-        None
     }
 
     /// Filter out the Extensions section from the system prompt
@@ -328,6 +293,10 @@ impl ClaudeCodeProvider {
             .arg(messages_json.to_string())
             .arg("--system-prompt")
             .arg(&filtered_system);
+
+        if let Ok(path) = search_path_var_with_extra(get_claude_code_search_paths()) {
+            cmd.env("PATH", path);
+        }
 
         // Only pass model parameter if it's in the known models list
         if CLAUDE_CODE_KNOWN_MODELS.contains(&self.model.model_name.as_str()) {
