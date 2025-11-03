@@ -768,6 +768,7 @@ impl Config {
     declare_param!(GOOSE_MODEL, String);
     declare_param!(CLAUDE_CODE_COMMAND, String, npm_exe_name!("claude"));
     declare_param!(GEMINI_CLI_COMMAND, String, npm_exe_name!("gemini"));
+    declare_param!(CURSOR_AGENT_COMMAND, String, "cursor-agent");
 }
 
 /// Load init-config.yaml from workspace root if it exists.

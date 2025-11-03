@@ -9,7 +9,7 @@ use tokio::process::Command;
 use super::base::{ConfigKey, Provider, ProviderMetadata, ProviderUsage, Usage};
 use super::errors::ProviderError;
 use super::utils::RequestLog;
-use crate::config::search_path::{npm_search_paths, search_path_var_with_extra};
+use crate::config::search_path::SearchPaths;
 use crate::config::{Config, GooseMode};
 use crate::conversation::message::{Message, MessageContent};
 use crate::model::ModelConfig;
@@ -31,7 +31,7 @@ pub struct ClaudeCodeProvider {
 impl ClaudeCodeProvider {
     pub async fn from_env(model: ModelConfig) -> Result<Self> {
         let config = crate::config::Config::global();
-        let command: String = config.get_claude_code_command();
+        let command = config.get_claude_code_command();
 
         Ok(Self {
             command,
@@ -266,7 +266,7 @@ impl ClaudeCodeProvider {
             .arg("--system-prompt")
             .arg(&filtered_system);
 
-        if let Ok(path) = search_path_var_with_extra(npm_search_paths()) {
+        if let Ok(path) = SearchPaths::builder().with_npm().env_var() {
             cmd.env("PATH", path);
         }
 

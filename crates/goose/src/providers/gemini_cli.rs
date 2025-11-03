@@ -8,7 +8,7 @@ use tokio::process::Command;
 use super::base::{Provider, ProviderMetadata, ProviderUsage, Usage};
 use super::errors::ProviderError;
 use super::utils::RequestLog;
-use crate::config::search_path::{npm_search_paths, search_path_var_with_extra};
+use crate::config::search_path::SearchPaths;
 use crate::config::Config;
 use crate::conversation::message::{Message, MessageContent};
 use crate::model::ModelConfig;
@@ -31,7 +31,7 @@ pub struct GeminiCliProvider {
 impl GeminiCliProvider {
     pub async fn from_env(model: ModelConfig) -> Result<Self> {
         let config = Config::global();
-        let command: String = config.get_gemini_cli_command();
+        let command = config.get_gemini_cli_command();
 
         Ok(Self {
             command,
@@ -105,7 +105,7 @@ impl GeminiCliProvider {
 
         let mut cmd = Command::new(&self.command);
 
-        if let Ok(path) = search_path_var_with_extra(npm_search_paths()) {
+        if let Ok(path) = SearchPaths::builder().with_npm().env_var() {
             cmd.env("PATH", path);
         }
 

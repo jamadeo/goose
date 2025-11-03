@@ -34,7 +34,7 @@ use super::types::SharedProvider;
 use crate::agents::extension::{Envs, ProcessExit};
 use crate::agents::extension_malware_check;
 use crate::agents::mcp_client::{McpClient, McpClientTrait};
-use crate::config::search_path::search_path_var;
+use crate::config::search_path::SearchPaths;
 use crate::config::{get_all_extensions, Config};
 use crate::oauth::oauth_flow;
 use crate::prompt_template;
@@ -188,10 +188,9 @@ async fn child_process_client(
     #[cfg(windows)]
     command.creation_flags(CREATE_NO_WINDOW_FLAG);
 
-    command.env(
-        "PATH",
-        search_path_var().map_err(|e| ExtensionError::ConfigError(format!("{}", e)))?,
-    );
+    if let Ok(path) = SearchPaths::builder().env_var() {
+        command.env("PATH", path);
+    }
 
     let (transport, mut stderr) = TokioChildProcess::builder(command)
         .stderr(Stdio::piped())

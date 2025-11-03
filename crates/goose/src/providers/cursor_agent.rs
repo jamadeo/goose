@@ -30,9 +30,7 @@ pub struct CursorAgentProvider {
 impl CursorAgentProvider {
     pub async fn from_env(model: ModelConfig) -> Result<Self> {
         let config = crate::config::Config::global();
-        let command: String = config
-            .get_param("CURSOR_AGENT_COMMAND")
-            .unwrap_or_else(|_| "cursor-agent".to_string());
+        let command = config.get_cursor_agent_command();
 
         let resolved_command = if !command.contains('/') {
             Self::find_cursor_agent_executable(&command).unwrap_or(command)
