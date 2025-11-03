@@ -37,7 +37,7 @@ impl SearchPaths {
             }
         } else if let Some(home) = dirs::home_dir() {
             self.paths.push(home.join(".npm-global/bin"));
-            self.paths.push(home.join("node_modules/bin"));
+            self.paths.push(home.join("node_modules/.bin"));
         }
         self
     }
