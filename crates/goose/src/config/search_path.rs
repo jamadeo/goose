@@ -27,3 +27,21 @@ pub fn search_path_var_with_extra(extra: Vec<PathBuf>) -> Result<OsString, Confi
     )
     .map_err(|e| ConfigError::DeserializeError(format!("{}", e)))
 }
+
+pub fn npm_search_paths() -> Vec<PathBuf> {
+    let mut paths = Vec::new();
+
+    if cfg!(windows) {
+        if let Some(appdata) = dirs::data_dir() {
+            paths.push(appdata.join("npm"));
+        }
+    } else {
+        paths.push(PathBuf::from("/usr/local/bin"));
+
+        if let Some(home) = dirs::home_dir() {
+            paths.push(home.join(".npm-global").join("bin"));
+        }
+    }
+
+    paths
+}

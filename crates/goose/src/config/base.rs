@@ -138,7 +138,30 @@ impl Default for Config {
     }
 }
 
+macro_rules! npm_exe_name {
+    ($name:literal) => {
+        if cfg!(windows) {
+            concat!($name, ".cmd")
+        } else {
+            $name
+        }
+    };
+}
+
 macro_rules! declare_param {
+    ($param_name:ident, $param_type:ty, $param_default:expr) => {
+        paste::paste! {
+            pub fn [<get_ $param_name:lower>](&self) -> $param_type {
+                self.get_param(stringify!($param_name)).unwrap_or_else(|_| $param_default.into())
+            }
+        }
+        paste::paste! {
+            pub fn [<set_ $param_name:lower>](&self, v: impl Into<$param_type>) -> Result<(), ConfigError> {
+                self.set_param(stringify!($param_name), &v.into())
+            }
+        }
+    };
+
     ($param_name:ident, $param_type:ty) => {
         paste::paste! {
             pub fn [<get_ $param_name:lower>](&self) -> Result<$param_type, ConfigError> {
@@ -743,6 +766,8 @@ impl Config {
     declare_param!(GOOSE_MODE, GooseMode);
     declare_param!(GOOSE_PROVIDER, String);
     declare_param!(GOOSE_MODEL, String);
+    declare_param!(CLAUDE_CODE_COMMAND, String, npm_exe_name!("claude"));
+    declare_param!(GEMINI_CLI_COMMAND, String, npm_exe_name!("gemini"));
 }
 
 /// Load init-config.yaml from workspace root if it exists.
