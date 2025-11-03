@@ -15,9 +15,7 @@ impl SearchPaths {
         #[cfg(unix)]
         {
             paths.push("/usr/local/bin".into());
-            if let Some(home) = dirs::home_dir() {
-                self.paths.push(home.join(".local/bin"));
-            }
+            paths.push("~/.local/bin".into());
         }
 
         if cfg!(target_os = "macos") {
@@ -37,11 +35,9 @@ impl SearchPaths {
             if let Some(appdata) = dirs::data_dir() {
                 self.paths.push(appdata.join("npm"));
             }
-        } else {
-            if let Some(home) = dirs::home_dir() {
-                self.paths.push(home.join(".npm-global/bin"));
-                self.paths.push(home.join("node_modules/bin"));
-            }
+        } else if let Some(home) = dirs::home_dir() {
+            self.paths.push(home.join(".npm-global/bin"));
+            self.paths.push(home.join("node_modules/bin"));
         }
         self
     }
