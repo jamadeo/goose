@@ -12,6 +12,7 @@ use crate::config::search_path::SearchPaths;
 use crate::config::Config;
 use crate::conversation::message::{Message, MessageContent};
 use crate::model::ModelConfig;
+use crate::providers::base::ConfigKey;
 use rmcp::model::Role;
 use rmcp::model::Tool;
 
@@ -251,7 +252,12 @@ impl Provider for GeminiCliProvider {
             GEMINI_CLI_DEFAULT_MODEL,
             GEMINI_CLI_KNOWN_MODELS.to_vec(),
             GEMINI_CLI_DOC_URL,
-            vec![], // No configuration needed
+            vec![ConfigKey::new(
+                "GEMINI_CLI_COMMAND",
+                false,
+                false,
+                Some("gemini"),
+            )],
         )
     }
 
