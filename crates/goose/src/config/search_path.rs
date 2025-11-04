@@ -74,3 +74,55 @@ impl SearchPaths {
             })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_path_preserves_existing_path() {
+        let search_paths = SearchPaths::builder();
+        let combined_path = search_paths.path().unwrap();
+
+        if let Some(existing_path) = env::var_os("PATH") {
+            let combined_str = combined_path.to_string_lossy();
+            let existing_str = existing_path.to_string_lossy();
+
+            let sep = if cfg!(windows) { ';' } else { ':' };
+            let existing_parts: Vec<&str> = existing_str.split(sep).collect();
+            let combined_parts: Vec<&str> = combined_str.split(sep).collect();
+
+            assert!(
+                combined_parts.len() >= existing_parts.len(),
+                "Combined path should include all existing paths plus our additions"
+            );
+        }
+    }
+
+    #[test]
+    fn test_resolve_nonexistent_executable() {
+        let search_paths = SearchPaths::builder();
+
+        let result = search_paths.resolve("nonexistent_executable_12345_abcdef");
+
+        assert!(
+            result.is_err(),
+            "Resolving nonexistent executable should return an error"
+        );
+    }
+
+    #[test]
+    fn test_resolve_common_executable() {
+        let search_paths = SearchPaths::builder();
+
+        #[cfg(unix)]
+        let test_executable = "sh";
+
+        #[cfg(windows)]
+        let test_executable = "cmd";
+
+        search_paths
+            .resolve(test_executable)
+            .expect("should resolve sh (or cmd on Windows)");
+    }
+}
