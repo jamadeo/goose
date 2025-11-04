@@ -600,7 +600,6 @@ pub async fn configure_provider_dialog() -> anyhow::Result<bool> {
     let spin = spinner();
     spin.start("Checking your configuration...");
 
-    // Get environment variable settings for toolshim
     let toolshim_enabled = std::env::var("GOOSE_TOOLSHIM")
         .map(|val| val == "1" || val.to_lowercase() == "true")
         .unwrap_or(false);
