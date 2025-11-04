@@ -10,6 +10,7 @@ import { cn } from '../utils';
 import { ChatType } from '../types/chat';
 import { useSearchParams } from 'react-router-dom';
 import type { setViewType } from '../hooks/useNavigation';
+import { useError } from './ErrorContext';
 
 export interface PairRouteState {
   resumeSessionId?: string;
@@ -21,7 +22,6 @@ interface PairProps {
   setChat: (chat: ChatType) => void;
   setView: setViewType;
   setIsGoosehintsModalOpen: (isOpen: boolean) => void;
-  setFatalError: (value: ((prevState: string | null) => string | null) | string | null) => void;
   setAgentWaitingMessage: (msg: string | null) => void;
   agentState: AgentState;
   loadCurrentChat: (context: InitializationContext) => Promise<ChatType>;
@@ -32,7 +32,6 @@ export default function Pair({
   setChat,
   setView,
   setIsGoosehintsModalOpen,
-  setFatalError,
   setAgentWaitingMessage,
   agentState,
   loadCurrentChat,
@@ -47,6 +46,8 @@ export default function Pair({
   const [isTransitioningFromHub, setIsTransitioningFromHub] = useState(false);
   const [loadingChat, setLoadingChat] = useState(false);
   const [_searchParams, setSearchParams] = useSearchParams();
+
+  const { setError } = useError();
 
   useEffect(() => {
     const initializeFromState = async () => {
@@ -63,7 +64,7 @@ export default function Pair({
         });
       } catch (error) {
         console.log(error);
-        setFatalError(`Agent init failure: ${error instanceof Error ? error.message : '' + error}`);
+        setError({ message: error instanceof Error ? error.message : '' + error });
       } finally {
         setLoadingChat(false);
       }
@@ -72,11 +73,11 @@ export default function Pair({
   }, [
     agentState,
     setChat,
-    setFatalError,
     setAgentWaitingMessage,
     loadCurrentChat,
     resumeSessionId,
     setSearchParams,
+    setError,
   ]);
 
   // Followed by sending the initialMessage if we have one. This will happen

@@ -14,6 +14,8 @@ import {
   validateConfig,
 } from '../api';
 import { COST_TRACKING_ENABLED } from '../updates';
+import { useError } from '../components/ErrorContext';
+import { useNavigate } from 'react-router-dom';
 
 export enum AgentState {
   UNINITIALIZED = 'uninitialized',
@@ -57,6 +59,8 @@ export function useAgent(): UseAgentReturn {
     (window.appConfig.get('scheduledJobId') as string | null | undefined) ?? null
   );
   const { getExtensions, addExtension, read } = useConfig();
+  const { setError } = useError();
+  const navigate = useNavigate();
 
   const resetChat = useCallback(() => {
     setSessionId(null);
@@ -167,6 +171,14 @@ export function useAgent(): UseAgentReturn {
             setIsExtensionsLoading: initContext.setIsExtensionsLoading,
             recipeParameters: agentSession.user_recipe_values,
             recipe: recipeForInit,
+            onError: (message, label, route) =>
+              setError({
+                message,
+                recovery: {
+                  label: `Go back to ${label}`,
+                  action: () => navigate(route),
+                },
+              }),
           });
 
           if (COST_TRACKING_ENABLED) {
@@ -217,7 +229,7 @@ export function useAgent(): UseAgentReturn {
       initPromiseRef.current = initPromise;
       return initPromise;
     },
-    [agentIsInitialized, sessionId, read, getExtensions, addExtension]
+    [agentIsInitialized, sessionId, read, getExtensions, addExtension, setError, navigate]
   );
 
   return {

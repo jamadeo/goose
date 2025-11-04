@@ -29,6 +29,7 @@ export const initializeSystem = async (
     setIsExtensionsLoading?: (loading: boolean) => void;
     recipeParameters?: Record<string, string> | null;
     recipe?: Recipe;
+    onError?: (message: string, label: string, route: string) => void;
   }
 ) => {
   try {
@@ -40,14 +41,23 @@ export const initializeSystem = async (
       'sessionId',
       sessionId
     );
-    await updateAgentProvider({
-      body: {
-        session_id: sessionId,
-        provider,
-        model,
-      },
-      throwOnError: true,
-    });
+    try {
+      await updateAgentProvider({
+        body: {
+          session_id: sessionId,
+          provider,
+          model,
+        },
+        throwOnError: true,
+      });
+    } catch (error) {
+      if (options?.onError) {
+        options?.onError(`${error}`, 'Providers', '/configure-providers');
+        return;
+      } else {
+        throw error;
+      }
+    }
 
     if (!sessionId) {
       console.log('This will not end well');
