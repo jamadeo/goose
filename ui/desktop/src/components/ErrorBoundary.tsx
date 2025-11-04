@@ -2,8 +2,6 @@ import React from 'react';
 import { Button } from './ui/button';
 import { AlertTriangle } from 'lucide-react';
 
-import { ErrorInfo, useError } from './ErrorContext';
-
 // Capture unhandled promise rejections
 window.addEventListener('unhandledrejection', (event) => {
   window.electron.logInfo(`[UNHANDLED REJECTION] ${event.reason}`);
@@ -16,15 +14,7 @@ window.addEventListener('error', (event) => {
   );
 });
 
-export function ErrorUI() {
-  const { error, clearError } = useError();
-
-  if (!error) return null;
-  return <PureErrorUI error={error} clearError={clearError} />;
-}
-
-function PureErrorUI({ error, clearError }: { error: ErrorInfo; clearError?: () => void }) {
-  const { message, recovery } = error;
+export function ErrorUI({ error }: { error: Error }) {
   return (
     <div className="fixed inset-0 w-full h-full flex flex-col items-center justify-center gap-6 bg-background">
       <div className="flex flex-col items-center gap-4 max-w-[600px] text-center px-6">
@@ -44,27 +34,11 @@ function PureErrorUI({ error, clearError }: { error: ErrorInfo; clearError?: () 
           </p>
         )}
 
-        <pre className="text-destructive text-sm dark:text-white p-4 bg-muted rounded-lg w-full overflow-auto border border-border whitespace-pre-wrap">
-          {message}
+        <pre className="text-destructive text-sm dark:text-white p-4 bg-muted rounded-lg w-full overflow-auto border border-border">
+          {error.message}
         </pre>
 
-        {recovery ? (
-          <Button
-            onClick={() => {
-              try {
-                return recovery.action();
-              } finally {
-                if (clearError) {
-                  clearError();
-                }
-              }
-            }}
-          >
-            {recovery.label}
-          </Button>
-        ) : (
-          <Button onClick={() => window.electron.reloadApp()}>Reload</Button>
-        )}
+        <Button onClick={() => window.electron.reloadApp()}>Reload</Button>
       </div>
     </div>
   );
@@ -90,7 +64,7 @@ export class ErrorBoundary extends React.Component<
 
   render() {
     if (this.state.hasError) {
-      return <PureErrorUI error={{ message: `${this.state.error}` || 'Unknown error' }} />;
+      return <ErrorUI error={this.state.error || new Error('Unknown error')} />;
     }
     return this.props.children;
   }

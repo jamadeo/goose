@@ -44,7 +44,6 @@ import {
 } from './hooks/useAgent';
 import { useNavigation } from './hooks/useNavigation';
 import Pair2 from './components/Pair2';
-import { ErrorProvider, useError } from './components/ErrorContext';
 
 // Route Components
 const HubRouteWrapper = ({
@@ -73,6 +72,7 @@ const PairRouteWrapper = ({
   setChat,
   setIsGoosehintsModalOpen,
   setAgentWaitingMessage,
+  setFatalError,
   agentState,
   loadCurrentChat,
   activeSessionId,
@@ -82,6 +82,7 @@ const PairRouteWrapper = ({
   setChat: (chat: ChatType) => void;
   setIsGoosehintsModalOpen: (isOpen: boolean) => void;
   setAgentWaitingMessage: (msg: string | null) => void;
+  setFatalError: (value: ((prevState: string | null) => string | null) | string | null) => void;
   agentState: AgentState;
   loadCurrentChat: (context: InitializationContext) => Promise<ChatType>;
   activeSessionId: string | null;
@@ -135,6 +136,7 @@ const PairRouteWrapper = ({
       setView={setView}
       agentState={agentState}
       loadCurrentChat={loadCurrentChat}
+      setFatalError={setFatalError}
       setAgentWaitingMessage={setAgentWaitingMessage}
       setIsGoosehintsModalOpen={setIsGoosehintsModalOpen}
       resumeSessionId={resumeSessionId}
@@ -310,6 +312,7 @@ const ExtensionsRoute = () => {
 };
 
 export function AppInner() {
+  const [fatalError, setFatalError] = useState<string | null>(null);
   const [isGoosehintsModalOpen, setIsGoosehintsModalOpen] = useState(false);
   const [agentWaitingMessage, setAgentWaitingMessage] = useState<string | null>(null);
   const [isLoadingSharedSession, setIsLoadingSharedSession] = useState(false);
@@ -319,7 +322,6 @@ export function AppInner() {
 
   const navigate = useNavigate();
   const setView = useNavigation();
-  const { error, setError } = useError();
 
   const location = useLocation();
   const [_searchParams, setSearchParams] = useSearchParams();
@@ -353,11 +355,11 @@ export function AppInner() {
       window.electron.reactReady();
     } catch (error) {
       console.error('Error sending reactReady:', error);
-      setError({
-        message: `React ready notification failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
-      });
+      setFatalError(
+        `React ready notification failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
     }
-  }, [setError]);
+  }, []);
 
   // Handle URL parameters and deeplinks on app startup
   const loadingHub = location.pathname === '/';
@@ -480,15 +482,14 @@ export function AppInner() {
   useEffect(() => {
     const handleFatalError = (_event: IpcRendererEvent, ...args: unknown[]) => {
       const errorMessage = args[0] as string;
-      setError({
-        message: errorMessage,
-      });
+      console.error('Encountered a fatal error:', errorMessage);
+      setFatalError(errorMessage);
     };
     window.electron.on('fatal-error', handleFatalError);
     return () => {
       window.electron.off('fatal-error', handleFatalError);
     };
-  }, [setError]);
+  }, []);
 
   useEffect(() => {
     const handleSetView = (_event: IpcRendererEvent, ...args: unknown[]) => {
@@ -563,8 +564,8 @@ export function AppInner() {
     };
   }, []);
 
-  if (error) {
-    return <ErrorUI />;
+  if (fatalError) {
+    return <ErrorUI error={new Error(fatalError)} />;
   }
 
   return (
@@ -626,6 +627,7 @@ export function AppInner() {
                   setChat={setChat}
                   agentState={agentState}
                   loadCurrentChat={loadCurrentChat}
+                  setFatalError={setFatalError}
                   setAgentWaitingMessage={setAgentWaitingMessage}
                   setIsGoosehintsModalOpen={setIsGoosehintsModalOpen}
                   activeSessionId={activeSessionId}
@@ -678,9 +680,7 @@ export default function App() {
   return (
     <ModelAndProviderProvider>
       <HashRouter>
-        <ErrorProvider>
-          <AppInner />
-        </ErrorProvider>
+        <AppInner />
       </HashRouter>
       <AnnouncementModal />
     </ModelAndProviderProvider>
