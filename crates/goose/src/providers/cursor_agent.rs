@@ -2,6 +2,7 @@ use anyhow::Result;
 use async_trait::async_trait;
 use rmcp::model::Role;
 use serde_json::{json, Value};
+use std::path::PathBuf;
 use std::process::Stdio;
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::Command;
@@ -21,7 +22,7 @@ pub const CURSOR_AGENT_DOC_URL: &str = "https://docs.cursor.com/en/cli/overview"
 
 #[derive(Debug, serde::Serialize)]
 pub struct CursorAgentProvider {
-    command: String,
+    command: PathBuf,
     model: ModelConfig,
     #[serde(skip)]
     name: String,
@@ -31,9 +32,10 @@ impl CursorAgentProvider {
     pub async fn from_env(model: ModelConfig) -> Result<Self> {
         let config = crate::config::Config::global();
         let command = config.get_cursor_agent_command();
+        let resolved_command = SearchPaths::builder().with_npm().resolve(command)?;
 
         Ok(Self {
-            command,
+            command: resolved_command,
             model,
             name: Self::metadata().name,
         })
@@ -190,7 +192,7 @@ impl CursorAgentProvider {
 
         if std::env::var("GOOSE_CURSOR_AGENT_DEBUG").is_ok() {
             println!("=== CURSOR AGENT PROVIDER DEBUG ===");
-            println!("Command: {}", self.command);
+            println!("Command: {:?}", self.command);
             println!("Original system prompt length: {} chars", system.len());
             println!(
                 "Filtered system prompt length: {} chars",
@@ -203,7 +205,7 @@ impl CursorAgentProvider {
 
         let mut cmd = Command::new(&self.command);
 
-        if let Ok(path) = SearchPaths::builder().with_npm().env_var() {
+        if let Ok(path) = SearchPaths::builder().with_npm().path() {
             cmd.env("PATH", path);
         }
 
@@ -223,7 +225,7 @@ impl CursorAgentProvider {
         let mut child = cmd
                 .spawn()
                 .map_err(|e| ProviderError::RequestFailed(format!(
-                    "Failed to spawn cursor-agent CLI command '{}': {}. \
+                    "Failed to spawn cursor-agent CLI command '{:?}': {}. \
                     Make sure the cursor-agent CLI is installed and in your PATH, or set CURSOR_AGENT_COMMAND in your config to the correct path.",
                     self.command, e
                 )))?;

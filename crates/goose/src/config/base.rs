@@ -8,6 +8,7 @@ use serde_json::Value;
 use serde_yaml::Mapping;
 use std::collections::HashMap;
 use std::env;
+use std::ffi::OsString;
 use std::fs::OpenOptions;
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -766,9 +767,9 @@ impl Config {
     declare_param!(GOOSE_MODE, GooseMode);
     declare_param!(GOOSE_PROVIDER, String);
     declare_param!(GOOSE_MODEL, String);
-    declare_param!(CLAUDE_CODE_COMMAND, String, npm_exe_name!("claude"));
-    declare_param!(GEMINI_CLI_COMMAND, String, npm_exe_name!("gemini"));
-    declare_param!(CURSOR_AGENT_COMMAND, String, "cursor-agent");
+    declare_param!(CLAUDE_CODE_COMMAND, OsString, npm_exe_name!("claude"));
+    declare_param!(GEMINI_CLI_COMMAND, OsString, npm_exe_name!("gemini"));
+    declare_param!(CURSOR_AGENT_COMMAND, OsString, "cursor-agent");
 }
 
 /// Load init-config.yaml from workspace root if it exists.

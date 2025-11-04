@@ -2,6 +2,7 @@ use anyhow::Result;
 use async_trait::async_trait;
 use rmcp::model::Role;
 use serde_json::{json, Value};
+use std::path::PathBuf;
 use std::process::Stdio;
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::Command;
@@ -22,7 +23,7 @@ pub const CLAUDE_CODE_DOC_URL: &str = "https://claude.ai/cli";
 
 #[derive(Debug, serde::Serialize)]
 pub struct ClaudeCodeProvider {
-    command: String,
+    command: PathBuf,
     model: ModelConfig,
     #[serde(skip)]
     name: String,
@@ -32,9 +33,10 @@ impl ClaudeCodeProvider {
     pub async fn from_env(model: ModelConfig) -> Result<Self> {
         let config = crate::config::Config::global();
         let command = config.get_claude_code_command();
+        let resolved_command = SearchPaths::builder().with_npm().resolve(command)?;
 
         Ok(Self {
-            command,
+            command: resolved_command,
             model,
             name: Self::metadata().name,
         })
@@ -245,7 +247,7 @@ impl ClaudeCodeProvider {
 
         if std::env::var("GOOSE_CLAUDE_CODE_DEBUG").is_ok() {
             println!("=== CLAUDE CODE PROVIDER DEBUG ===");
-            println!("Command: {}", self.command);
+            println!("Command: {:?}", self.command);
             println!("Original system prompt length: {} chars", system.len());
             println!(
                 "Filtered system prompt length: {} chars",
@@ -266,10 +268,6 @@ impl ClaudeCodeProvider {
             .arg("--system-prompt")
             .arg(&filtered_system);
 
-        if let Ok(path) = SearchPaths::builder().with_npm().env_var() {
-            cmd.env("PATH", path);
-        }
-
         // Only pass model parameter if it's in the known models list
         if CLAUDE_CODE_KNOWN_MODELS.contains(&self.model.model_name.as_str()) {
             cmd.arg("--model").arg(&self.model.model_name);
@@ -285,13 +283,12 @@ impl ClaudeCodeProvider {
 
         cmd.stdout(Stdio::piped()).stderr(Stdio::piped());
 
-        let mut child = cmd
-            .spawn()
-            .map_err(|e| ProviderError::RequestFailed(format!(
-                "Failed to spawn Claude CLI command '{}': {}. \
-                Make sure the Claude Code CLI is installed and in your PATH, or set CLAUDE_CODE_COMMAND in your config to the correct path.",
+        let mut child = cmd.spawn().map_err(|e| {
+            ProviderError::RequestFailed(format!(
+                "Failed to spawn Claude CLI command '{:?}': {}.",
                 self.command, e
-            )))?;
+            ))
+        })?;
 
         let stdout = child
             .stdout

@@ -1,6 +1,7 @@
 use anyhow::Result;
 use async_trait::async_trait;
 use serde_json::json;
+use std::path::PathBuf;
 use std::process::Stdio;
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::Command;
@@ -23,7 +24,7 @@ pub const GEMINI_CLI_DOC_URL: &str = "https://ai.google.dev/gemini-api/docs";
 
 #[derive(Debug, serde::Serialize)]
 pub struct GeminiCliProvider {
-    command: String,
+    command: PathBuf,
     model: ModelConfig,
     #[serde(skip)]
     name: String,
@@ -33,9 +34,10 @@ impl GeminiCliProvider {
     pub async fn from_env(model: ModelConfig) -> Result<Self> {
         let config = Config::global();
         let command = config.get_gemini_cli_command();
+        let resolved_command = SearchPaths::builder().with_npm().resolve(command)?;
 
         Ok(Self {
-            command,
+            command: resolved_command,
             model,
             name: Self::metadata().name,
         })
@@ -99,14 +101,14 @@ impl GeminiCliProvider {
 
         if std::env::var("GOOSE_GEMINI_CLI_DEBUG").is_ok() {
             println!("=== GEMINI CLI PROVIDER DEBUG ===");
-            println!("Command: {}", self.command);
+            println!("Command: {:?}", self.command);
             println!("Full prompt: {}", full_prompt);
             println!("================================");
         }
 
         let mut cmd = Command::new(&self.command);
 
-        if let Ok(path) = SearchPaths::builder().with_npm().env_var() {
+        if let Ok(path) = SearchPaths::builder().with_npm().path() {
             cmd.env("PATH", path);
         }
 
@@ -121,7 +123,7 @@ impl GeminiCliProvider {
 
         let mut child = cmd.spawn().map_err(|e| {
             ProviderError::RequestFailed(format!(
-                "Failed to spawn Gemini CLI command '{}': {}. \
+                "Failed to spawn Gemini CLI command '{:?}': {}. \
                 Make sure the Gemini CLI is installed and in your PATH.",
                 self.command, e
             ))

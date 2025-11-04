@@ -188,7 +188,7 @@ async fn child_process_client(
     #[cfg(windows)]
     command.creation_flags(CREATE_NO_WINDOW_FLAG);
 
-    if let Ok(path) = SearchPaths::builder().env_var() {
+    if let Ok(path) = SearchPaths::builder().path() {
         command.env("PATH", path);
     }
 

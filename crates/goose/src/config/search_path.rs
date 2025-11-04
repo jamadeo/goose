@@ -1,6 +1,12 @@
-use std::{env, ffi::OsString, path::PathBuf};
+use std::{
+    env::{self},
+    ffi::{OsStr, OsString},
+    path::PathBuf,
+};
 
-use crate::config::{Config, ConfigError};
+use anyhow::{Context, Result};
+
+use crate::config::Config;
 
 pub struct SearchPaths {
     paths: Vec<PathBuf>,
@@ -41,7 +47,7 @@ impl SearchPaths {
         self
     }
 
-    pub fn env_var(self) -> Result<OsString, ConfigError> {
+    pub fn path(self) -> Result<OsString> {
         env::join_paths(
             self.paths.into_iter().chain(
                 env::var_os("PATH")
@@ -51,6 +57,20 @@ impl SearchPaths {
                     .flatten(),
             ),
         )
-        .map_err(|e| ConfigError::DeserializeError(format!("{e}")))
+        .map_err(Into::into)
+    }
+
+    pub fn resolve<N>(self, name: N) -> Result<PathBuf>
+    where
+        N: AsRef<OsStr>,
+    {
+        which::which_in_global(name.as_ref(), Some(self.path()?))?
+            .next()
+            .with_context(|| {
+                format!(
+                    "could not resolve '{}': file does not exist",
+                    name.as_ref().to_string_lossy()
+                )
+            })
     }
 }
