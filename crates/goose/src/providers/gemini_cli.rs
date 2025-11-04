@@ -126,7 +126,7 @@ impl GeminiCliProvider {
         let mut child = cmd.spawn().map_err(|e| {
             ProviderError::RequestFailed(format!(
                 "Failed to spawn Gemini CLI command '{:?}': {}. \
-                Make sure the Gemini CLI is installed and in your PATH.",
+                Make sure the Gemini CLI is installed and available in the configured search paths.",
                 self.command, e
             ))
         })?;

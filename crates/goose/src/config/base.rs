@@ -203,9 +203,9 @@ macro_rules! config_value {
                 }
             }
 
-            impl Into<$inner> for [<$key:camel>] {
-                fn into(self) -> $inner {
-                    self.0
+            impl From<[<$key:camel>]> for $inner {
+                fn from(value: [<$key:camel>]) -> $inner {
+                    value.0
                 }
             }
 

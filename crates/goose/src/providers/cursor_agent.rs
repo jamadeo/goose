@@ -239,7 +239,7 @@ impl CursorAgentProvider {
                 .spawn()
                 .map_err(|e| ProviderError::RequestFailed(format!(
                     "Failed to spawn cursor-agent CLI command '{:?}': {}. \
-                    Make sure the cursor-agent CLI is installed and in your PATH, or set CURSOR_AGENT_COMMAND in your config to the correct path.",
+                    Make sure the cursor-agent CLI is installed and available in the configured search paths, or set CURSOR_AGENT_COMMAND in your config to the correct path.",
                     self.command, e
                 )))?;
 
