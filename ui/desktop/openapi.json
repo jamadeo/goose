@@ -4176,10 +4176,6 @@
           "currently_running": {
             "type": "boolean"
           },
-          "execution_mode": {
-            "type": "string",
-            "nullable": true
-          },
           "id": {
             "type": "string"
           },
@@ -4274,6 +4270,9 @@
           "schedule_id": {
             "type": "string",
             "nullable": true
+          },
+          "session_type": {
+            "$ref": "#/components/schemas/SessionType"
           },
           "total_tokens": {
             "type": "integer",
@@ -4392,6 +4391,15 @@
             "description": "List of available session information objects"
           }
         }
+      },
+      "SessionType": {
+        "type": "string",
+        "enum": [
+          "user",
+          "scheduled",
+          "sub_agent",
+          "hidden"
+        ]
       },
       "SessionsQuery": {
         "type": "object",

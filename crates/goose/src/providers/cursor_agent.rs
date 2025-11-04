@@ -43,6 +43,17 @@ impl CursorAgentProvider {
         })
     }
 
+    /// Get authentication status from cursor-agent
+    async fn get_authentication_status(&self) -> bool {
+        Command::new(&self.command)
+            .arg("status")
+            .output()
+            .await
+            .ok()
+            .map(|output| String::from_utf8_lossy(&output.stdout).contains("✓ Logged in as"))
+            .unwrap_or(false)
+    }
+
     /// Filter out the Extensions section from the system prompt
     fn filter_extensions_from_system_prompt(&self, system: &str) -> String {
         // Find the Extensions section and remove it
@@ -265,6 +276,11 @@ impl CursorAgentProvider {
         })?;
 
         if !exit_status.success() {
+            if !self.get_authentication_status().await {
+                return Err(ProviderError::Authentication(
+                    "You are not logged in to cursor-agent. Please run 'cursor-agent login' to authenticate first."
+                        .to_string()));
+            }
             return Err(ProviderError::RequestFailed(format!(
                 "Command failed with exit code: {:?}",
                 exit_status.code()

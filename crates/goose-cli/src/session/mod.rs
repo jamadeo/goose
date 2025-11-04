@@ -41,6 +41,7 @@ use goose::config::paths::Paths;
 use goose::conversation::message::{Message, MessageContent};
 use rand::{distributions::Alphanumeric, Rng};
 use rustyline::EditMode;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -50,6 +51,18 @@ use tokio;
 use tokio_util::sync::CancellationToken;
 use tracing::warn;
 
+#[derive(Serialize, Deserialize, Debug)]
+struct JsonOutput {
+    messages: Vec<Message>,
+    metadata: JsonMetadata,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct JsonMetadata {
+    total_tokens: Option<i32>,
+    status: String,
+}
+
 pub enum RunMode {
     Normal,
     Plan,
@@ -58,7 +71,7 @@ pub enum RunMode {
 pub struct CliSession {
     agent: Agent,
     messages: Conversation,
-    session_id: Option<String>,
+    session_id: String,
     completion_cache: Arc<std::sync::RwLock<CompletionCache>>,
     debug: bool,
     run_mode: RunMode,
@@ -66,6 +79,7 @@ pub struct CliSession {
     max_turns: Option<u32>,
     edit_mode: Option<EditMode>,
     retry_config: Option<RetryConfig>,
+    output_format: String,
 }
 
 // Cache structure for completion data
@@ -120,23 +134,21 @@ pub async fn classify_planner_response(
 }
 
 impl CliSession {
+    #[allow(clippy::too_many_arguments)]
     pub async fn new(
         agent: Agent,
-        session_id: Option<String>,
+        session_id: String,
         debug: bool,
         scheduled_job_id: Option<String>,
         max_turns: Option<u32>,
         edit_mode: Option<EditMode>,
         retry_config: Option<RetryConfig>,
+        output_format: String,
     ) -> Self {
-        let messages = if let Some(session_id) = &session_id {
-            SessionManager::get_session(session_id, true)
-                .await
-                .map(|session| session.conversation.unwrap_or_default())
-                .unwrap()
-        } else {
-            Conversation::new_unvalidated(Vec::new())
-        };
+        let messages = SessionManager::get_session(&session_id, true)
+            .await
+            .map(|session| session.conversation.unwrap_or_default())
+            .unwrap();
 
         CliSession {
             agent,
@@ -149,11 +161,12 @@ impl CliSession {
             max_turns,
             edit_mode,
             retry_config,
+            output_format,
         }
     }
 
-    pub fn session_id(&self) -> Option<&String> {
-        self.session_id.as_ref()
+    pub fn session_id(&self) -> &String {
+        &self.session_id
     }
 
     /// Add a stdio extension to the session
@@ -359,9 +372,6 @@ impl CliSession {
         cancel_token: CancellationToken,
     ) -> Result<()> {
         let cancel_token = cancel_token.clone();
-
-        // TODO(Douwe): Make sure we generate the description here still:
-
         self.push_message(message);
         self.process_agent_response(false, cancel_token).await?;
         Ok(())
@@ -443,7 +453,7 @@ impl CliSession {
                             // Track the current directory and last instruction in projects.json
                             if let Err(e) = crate::project_tracker::update_project_tracker(
                                 Some(&content),
-                                self.session_id.as_deref(),
+                                Some(&self.session_id),
                             ) {
                                 eprintln!("Warning: Failed to update project tracker with instruction: {}", e);
                             }
@@ -583,16 +593,14 @@ impl CliSession {
                 input::InputResult::Clear => {
                     save_history(&mut editor);
 
-                    if let Some(session_id) = &self.session_id {
-                        if let Err(e) = SessionManager::replace_conversation(
-                            session_id,
-                            &Conversation::default(),
-                        )
-                        .await
-                        {
-                            output::render_error(&format!("Failed to clear session: {}", e));
-                            continue;
-                        }
+                    if let Err(e) = SessionManager::replace_conversation(
+                        &self.session_id,
+                        &Conversation::default(),
+                    )
+                    .await
+                    {
+                        output::render_error(&format!("Failed to clear session: {}", e));
+                        continue;
                     }
 
                     self.messages.clear();
@@ -671,9 +679,10 @@ impl CliSession {
             }
         }
 
-        if let Some(id) = &self.session_id {
-            println!("Closing session. Session ID: {}", console::style(id).cyan());
-        }
+        println!(
+            "Closing session. Session ID: {}",
+            console::style(&self.session_id).cyan()
+        );
 
         Ok(())
     }
@@ -768,18 +777,23 @@ impl CliSession {
     ) -> Result<()> {
         let cancel_token_clone = cancel_token.clone();
 
-        let session_config = self.session_id.as_ref().map(|session_id| SessionConfig {
-            id: session_id.clone(),
-            working_dir: std::env::current_dir().unwrap_or_default(),
+        // Cache the output format check to avoid repeated string comparisons in the hot loop
+        let is_json_mode = self.output_format == "json";
+
+        let session_config = SessionConfig {
+            id: self.session_id.clone(),
             schedule_id: self.scheduled_job_id.clone(),
-            execution_mode: None,
             max_turns: self.max_turns,
             retry_config: self.retry_config.clone(),
-        });
+        };
+        let user_message = self
+            .messages
+            .last()
+            .ok_or_else(|| anyhow::anyhow!("No user message"))?;
         let mut stream = self
             .agent
             .reply(
-                self.messages.clone(),
+                user_message.clone(),
                 session_config.clone(),
                 Some(cancel_token.clone()),
             )
@@ -897,11 +911,16 @@ impl CliSession {
                                         );
                                     }
                                 }
+
                                 self.messages.push(message.clone());
 
                                 if interactive {output::hide_thinking()};
                                 let _ = progress_bars.hide();
-                                output::render_message(&message, self.debug);
+
+                                // Don't render in JSON mode
+                                if !is_json_mode {
+                                    output::render_message(&message, self.debug);
+                                }
                             }
                         }
                         Some(Ok(AgentEvent::McpNotification((_id, message)))) => {
@@ -973,17 +992,21 @@ impl CliSession {
                                         // TODO: proper display for subagent notifications
                                         if interactive {
                                             let _ = progress_bars.hide();
-                                            println!("{}", console::style(&formatted_message).green().dim());
-                                        } else {
+                                            if !is_json_mode {
+                                                println!("{}", console::style(&formatted_message).green().dim());
+                                            }
+                                        } else if !is_json_mode {
                                             progress_bars.log(&formatted_message);
                                         }
                                     } else if let Some(ref notification_type) = message_notification_type {
                                         if notification_type == TASK_EXECUTION_NOTIFICATION_TYPE {
                                             if interactive {
                                                 let _ = progress_bars.hide();
-                                                print!("{}", formatted_message);
-                                                std::io::stdout().flush().unwrap();
-                                            } else {
+                                                if !is_json_mode {
+                                                    print!("{}", formatted_message);
+                                                    std::io::stdout().flush().unwrap();
+                                                }
+                                            } else if !is_json_mode {
                                                 print!("{}", formatted_message);
                                                 std::io::stdout().flush().unwrap();
                                             }
@@ -1062,7 +1085,29 @@ impl CliSession {
                 }
             }
         }
-        println!();
+
+        // Output JSON if requested
+        if is_json_mode {
+            let metadata = match SessionManager::get_session(&self.session_id, false).await {
+                Ok(session) => JsonMetadata {
+                    total_tokens: session.total_tokens,
+                    status: "completed".to_string(),
+                },
+                Err(_) => JsonMetadata {
+                    total_tokens: None,
+                    status: "completed".to_string(),
+                },
+            };
+
+            let json_output = JsonOutput {
+                messages: self.messages.messages().to_vec(),
+                metadata,
+            };
+
+            println!("{}", serde_json::to_string_pretty(&json_output)?);
+        } else {
+            println!();
+        }
 
         Ok(())
     }
@@ -1224,16 +1269,13 @@ impl CliSession {
         );
     }
 
-    pub async fn get_metadata(&self) -> Result<goose::session::Session> {
-        match &self.session_id {
-            Some(id) => SessionManager::get_session(id, false).await,
-            None => Err(anyhow::anyhow!("No session available")),
-        }
+    pub async fn get_session(&self) -> Result<goose::session::Session> {
+        SessionManager::get_session(&self.session_id, false).await
     }
 
     // Get the session's total token usage
     pub async fn get_total_token_usage(&self) -> Result<Option<i32>> {
-        let metadata = self.get_metadata().await?;
+        let metadata = self.get_session().await?;
         Ok(metadata.total_tokens)
     }
 
@@ -1265,7 +1307,7 @@ impl CliSession {
             }
         }
 
-        match self.get_metadata().await {
+        match self.get_session().await {
             Ok(metadata) => {
                 let total_tokens = metadata.total_tokens.unwrap_or(0) as usize;
 
