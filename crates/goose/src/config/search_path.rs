@@ -88,14 +88,7 @@ mod tests {
             let combined_str = combined_path.to_string_lossy();
             let existing_str = existing_path.to_string_lossy();
 
-            let sep = if cfg!(windows) { ';' } else { ':' };
-            let existing_parts: Vec<&str> = existing_str.split(sep).collect();
-            let combined_parts: Vec<&str> = combined_str.split(sep).collect();
-
-            assert!(
-                combined_parts.len() >= existing_parts.len(),
-                "Combined path should include all existing paths plus our additions"
-            );
+            assert!(combined_str.contains(&existing_str.to_string()));
         }
     }
 
