@@ -1,3 +1,5 @@
+import { checkProvider } from '../../../../../../api';
+
 /**
  * Standalone function to submit provider configuration
  * Useful for components that don't want to use the hook
@@ -19,15 +21,6 @@ export const providerConfigSubmitHandler = async (
 ) => {
   const parameters = provider.metadata.config_keys || [];
 
-  if (parameters.length === 0) {
-    // For zero-config providers, mark them as configured
-    const configKey = `${provider.name}_configured`;
-    await upsertFn(configKey, true, false);
-
-    await upsertFn('GOOSE_PROVIDER', provider.name, false);
-    return;
-  }
-
   const requiredParams = parameters.filter((param) => param.required);
   if (requiredParams.length === 0 && parameters.length > 0) {
     const allOptionalWithDefaults = parameters.every(
@@ -35,8 +28,6 @@ export const providerConfigSubmitHandler = async (
     );
     if (allOptionalWithDefaults) {
       const promises: Promise<void>[] = [];
-      const configKey = `${provider.name}_configured`;
-      promises.push(upsertFn(configKey, true, false));
 
       for (const param of parameters) {
         if (param.default !== undefined) {
@@ -46,7 +37,8 @@ export const providerConfigSubmitHandler = async (
         }
       }
 
-      return Promise.all(promises);
+      await Promise.all(promises);
+      return;
     }
   }
 
@@ -54,7 +46,7 @@ export const providerConfigSubmitHandler = async (
     (parameter: { name: string; required?: boolean; default?: unknown; secret?: boolean }) => {
       // Skip parameters that don't have a value and aren't required
       if (!configValues[parameter.name] && !parameter.required) {
-        return Promise.resolve();
+        return;
       }
 
       // For required parameters with no value, use the default if available
@@ -65,7 +57,7 @@ export const providerConfigSubmitHandler = async (
 
       // Skip if there's still no value
       if (value === undefined || value === null) {
-        return Promise.resolve();
+        return;
       }
 
       // Create the provider-specific config key
@@ -79,6 +71,9 @@ export const providerConfigSubmitHandler = async (
     }
   );
 
-  // Wait for all upsert operations to complete
-  return Promise.all(upsertPromises);
+  await Promise.all(upsertPromises);
+  await checkProvider({
+    body: { provider: provider.name },
+    throwOnError: true,
+  });
 };

@@ -68,7 +68,7 @@ impl SearchPaths {
             .next()
             .with_context(|| {
                 format!(
-                    "could not resolve '{}': file does not exist",
+                    "could not resolve command '{}': file does not exist",
                     name.as_ref().to_string_lossy()
                 )
             })

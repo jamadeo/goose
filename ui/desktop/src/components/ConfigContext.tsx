@@ -70,6 +70,9 @@ export const ConfigProvider: React.FC<ConfigProviderProps> = ({ children }) => {
 
   const upsert = useCallback(
     async (key: string, value: unknown, isSecret: boolean = false) => {
+      if (key === 'GOOSE_PROVIDER') {
+        console.error('upsert provider');
+      }
       const query: UpsertConfigQuery = {
         key: key,
         value: value,

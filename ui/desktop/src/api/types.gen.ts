@@ -32,6 +32,10 @@ export type ChatRequest = {
     session_id: string;
 };
 
+export type CheckProviderRequest = {
+    provider: string;
+};
+
 /**
  * Configuration key metadata for provider setup
  */
@@ -729,6 +733,11 @@ export type SessionsQuery = {
     limit?: number;
 };
 
+export type SetProviderRequest = {
+    model: string;
+    provider: string;
+};
+
 export type Settings = {
     goose_model?: string | null;
     goose_provider?: string | null;
@@ -1210,6 +1219,13 @@ export type BackupConfigResponses = {
 
 export type BackupConfigResponse = BackupConfigResponses[keyof BackupConfigResponses];
 
+export type CheckProviderData = {
+    body: CheckProviderRequest;
+    path?: never;
+    query?: never;
+    url: '/config/check_provider';
+};
+
 export type CreateCustomProviderData = {
     body: UpdateCustomProviderRequest;
     path?: never;
@@ -1575,6 +1591,13 @@ export type RemoveConfigResponses = {
 };
 
 export type RemoveConfigResponse = RemoveConfigResponses[keyof RemoveConfigResponses];
+
+export type SetProviderData = {
+    body: SetProviderRequest;
+    path?: never;
+    query?: never;
+    url: '/config/set_provider';
+};
 
 export type UpsertConfigData = {
     body: UpsertConfigQuery;
