@@ -2,6 +2,7 @@ use anyhow::Result;
 use async_trait::async_trait;
 use rmcp::model::Role;
 use serde_json::{json, Value};
+use std::ffi::OsString;
 use std::path::PathBuf;
 use std::process::Stdio;
 use tokio::io::{AsyncBufReadExt, BufReader};
@@ -10,6 +11,7 @@ use tokio::process::Command;
 use super::base::{ConfigKey, Provider, ProviderMetadata, ProviderUsage, Usage};
 use super::errors::ProviderError;
 use super::utils::RequestLog;
+use crate::config::base::ClaudeCodeCommand;
 use crate::config::search_path::SearchPaths;
 use crate::config::{Config, GooseMode};
 use crate::conversation::message::{Message, MessageContent};
@@ -32,7 +34,7 @@ pub struct ClaudeCodeProvider {
 impl ClaudeCodeProvider {
     pub async fn from_env(model: ModelConfig) -> Result<Self> {
         let config = crate::config::Config::global();
-        let command = config.get_claude_code_command();
+        let command: OsString = config.get_claude_code_command().unwrap_or_default().into();
         let resolved_command = SearchPaths::builder().with_npm().resolve(command)?;
 
         Ok(Self {
@@ -393,12 +395,7 @@ impl Provider for ClaudeCodeProvider {
             CLAUDE_CODE_DEFAULT_MODEL,
             CLAUDE_CODE_KNOWN_MODELS.to_vec(),
             CLAUDE_CODE_DOC_URL,
-            vec![ConfigKey::new(
-                "CLAUDE_CODE_COMMAND",
-                false,
-                false,
-                Some("claude"),
-            )],
+            vec![ConfigKey::from_value_type::<ClaudeCodeCommand>(true, false)],
         )
     }
 

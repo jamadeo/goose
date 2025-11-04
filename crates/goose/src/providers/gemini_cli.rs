@@ -1,6 +1,7 @@
 use anyhow::Result;
 use async_trait::async_trait;
 use serde_json::json;
+use std::ffi::OsString;
 use std::path::PathBuf;
 use std::process::Stdio;
 use tokio::io::{AsyncBufReadExt, BufReader};
@@ -9,6 +10,7 @@ use tokio::process::Command;
 use super::base::{Provider, ProviderMetadata, ProviderUsage, Usage};
 use super::errors::ProviderError;
 use super::utils::RequestLog;
+use crate::config::base::GeminiCliCommand;
 use crate::config::search_path::SearchPaths;
 use crate::config::Config;
 use crate::conversation::message::{Message, MessageContent};
@@ -33,7 +35,7 @@ pub struct GeminiCliProvider {
 impl GeminiCliProvider {
     pub async fn from_env(model: ModelConfig) -> Result<Self> {
         let config = Config::global();
-        let command = config.get_gemini_cli_command();
+        let command: OsString = config.get_gemini_cli_command().unwrap_or_default().into();
         let resolved_command = SearchPaths::builder().with_npm().resolve(command)?;
 
         Ok(Self {
@@ -254,12 +256,7 @@ impl Provider for GeminiCliProvider {
             GEMINI_CLI_DEFAULT_MODEL,
             GEMINI_CLI_KNOWN_MODELS.to_vec(),
             GEMINI_CLI_DOC_URL,
-            vec![ConfigKey::new(
-                "GEMINI_CLI_COMMAND",
-                false,
-                false,
-                Some("gemini"),
-            )],
+            vec![ConfigKey::from_value_type::<GeminiCliCommand>(true, false)],
         )
     }
 

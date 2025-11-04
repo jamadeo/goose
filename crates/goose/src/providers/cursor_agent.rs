@@ -2,6 +2,7 @@ use anyhow::Result;
 use async_trait::async_trait;
 use rmcp::model::Role;
 use serde_json::{json, Value};
+use std::ffi::OsString;
 use std::path::PathBuf;
 use std::process::Stdio;
 use tokio::io::{AsyncBufReadExt, BufReader};
@@ -10,6 +11,7 @@ use tokio::process::Command;
 use super::base::{ConfigKey, Provider, ProviderMetadata, ProviderUsage, Usage};
 use super::errors::ProviderError;
 use super::utils::RequestLog;
+use crate::config::base::CursorAgentCommand;
 use crate::config::search_path::SearchPaths;
 use crate::conversation::message::{Message, MessageContent};
 use crate::model::ModelConfig;
@@ -31,7 +33,7 @@ pub struct CursorAgentProvider {
 impl CursorAgentProvider {
     pub async fn from_env(model: ModelConfig) -> Result<Self> {
         let config = crate::config::Config::global();
-        let command = config.get_cursor_agent_command();
+        let command: OsString = config.get_cursor_agent_command().unwrap_or_default().into();
         let resolved_command = SearchPaths::builder().with_npm().resolve(command)?;
 
         Ok(Self {
@@ -333,11 +335,8 @@ impl Provider for CursorAgentProvider {
             CURSOR_AGENT_DEFAULT_MODEL,
             CURSOR_AGENT_KNOWN_MODELS.to_vec(),
             CURSOR_AGENT_DOC_URL,
-            vec![ConfigKey::new(
-                "CURSOR_AGENT_COMMAND",
-                false,
-                false,
-                Some("cursor-agent"),
+            vec![ConfigKey::from_value_type::<CursorAgentCommand>(
+                true, false,
             )],
         )
     }
