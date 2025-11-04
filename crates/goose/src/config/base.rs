@@ -139,16 +139,6 @@ impl Default for Config {
     }
 }
 
-macro_rules! npm_exe_name {
-    ($name:literal) => {
-        if cfg!(windows) {
-            concat!($name, ".cmd")
-        } else {
-            $name
-        }
-    };
-}
-
 macro_rules! declare_param {
     ($param_name:ident, $param_type:ty, $param_default:expr) => {
         paste::paste! {
@@ -767,8 +757,8 @@ impl Config {
     declare_param!(GOOSE_MODE, GooseMode);
     declare_param!(GOOSE_PROVIDER, String);
     declare_param!(GOOSE_MODEL, String);
-    declare_param!(CLAUDE_CODE_COMMAND, OsString, npm_exe_name!("claude"));
-    declare_param!(GEMINI_CLI_COMMAND, OsString, npm_exe_name!("gemini"));
+    declare_param!(CLAUDE_CODE_COMMAND, OsString, "claude");
+    declare_param!(GEMINI_CLI_COMMAND, OsString, "gemini");
     declare_param!(CURSOR_AGENT_COMMAND, OsString, "cursor-agent");
 }
 
