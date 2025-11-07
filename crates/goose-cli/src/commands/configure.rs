@@ -722,7 +722,6 @@ pub fn configure_extensions_dialog() -> anyhow::Result<()> {
                     "Developer Tools",
                     "Code editing and shell access",
                 ),
-                ("jetbrains", "JetBrains", "Connect to jetbrains IDEs"),
                 (
                     "memory",
                     "Memory",

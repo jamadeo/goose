@@ -765,7 +765,7 @@ pub async fn check_provider(
     path = "/config/set_provider",
     request_body = SetProviderRequest,
 )]
-pub async fn set_provider(
+pub async fn set_config_provider(
     Json(SetProviderRequest { provider, model }): Json<SetProviderRequest>,
 ) -> Result<(), (StatusCode, String)> {
     create_with_default_model(&provider)
@@ -806,7 +806,7 @@ pub fn routes(state: Arc<AppState>) -> Router {
         .route("/config/custom-providers/{id}", put(update_custom_provider))
         .route("/config/custom-providers/{id}", get(get_custom_provider))
         .route("/config/check_provider", post(check_provider))
-        .route("/config/set_provider", post(set_provider))
+        .route("/config/set_provider", post(set_config_provider))
         .with_state(state)
 }
 

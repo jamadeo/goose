@@ -19,9 +19,8 @@ use crate::model::ModelConfig;
 use rmcp::model::Tool;
 
 pub const CLAUDE_CODE_DEFAULT_MODEL: &str = "claude-sonnet-4-20250514";
-pub const CLAUDE_CODE_KNOWN_MODELS: &[&str] = &["sonnet", "opus", "claude-sonnet-4-20250514"];
-
-pub const CLAUDE_CODE_DOC_URL: &str = "https://claude.ai/cli";
+pub const CLAUDE_CODE_KNOWN_MODELS: &[&str] = &["sonnet", "opus"];
+pub const CLAUDE_CODE_DOC_URL: &str = "https://code.claude.com/docs/en/setup";
 
 #[derive(Debug, serde::Serialize)]
 pub struct ClaudeCodeProvider {
@@ -110,6 +109,34 @@ impl ClaudeCodeProvider {
     }
 
     /// Parse the JSON response from claude CLI
+    fn apply_permission_flags(cmd: &mut Command) -> Result<(), ProviderError> {
+        let config = Config::global();
+        match config.get_goose_mode() {
+            Ok(GooseMode::Auto) => {
+                cmd.arg("--dangerously-skip-permissions");
+            }
+            Ok(GooseMode::SmartApprove) => {
+                cmd.arg("--permission-mode").arg("acceptEdits");
+            }
+            Ok(GooseMode::Approve) => {
+                return Err(ProviderError::RequestFailed(
+                    "\n\n\n### NOTE\n\n\n \
+                    Claude Code CLI provider does not support Approve mode.\n \
+                    Please use Auto (which will run anything it needs to) or \
+                    SmartApprove (most things will run or Chat Mode)\n\n\n"
+                        .to_string(),
+                ));
+            }
+            Ok(GooseMode::Chat) => {
+                // Chat mode doesn't need permission flags
+            }
+            Err(_) => {
+                // Default behavior if mode is not set
+            }
+        }
+        Ok(())
+    }
+
     fn parse_claude_response(
         &self,
         json_lines: &[String],
@@ -255,10 +282,7 @@ impl ClaudeCodeProvider {
         cmd.arg("--verbose").arg("--output-format").arg("json");
 
         // Add permission mode based on GOOSE_MODE setting
-        let config = Config::global();
-        if let Ok(GooseMode::Auto) = config.get_goose_mode() {
-            cmd.arg("--permission-mode").arg("acceptEdits");
-        }
+        Self::apply_permission_flags(&mut cmd)?;
 
         cmd.stdout(Stdio::piped()).stderr(Stdio::piped());
 
@@ -367,8 +391,8 @@ impl Provider for ClaudeCodeProvider {
     fn metadata() -> ProviderMetadata {
         ProviderMetadata::new(
             "claude-code",
-            "Claude Code",
-            "Execute Claude models via claude CLI tool",
+            "Claude Code CLI",
+            "Requires claude CLI installed, no MCPs. Use Anthropic provider for full features.",
             CLAUDE_CODE_DEFAULT_MODEL,
             CLAUDE_CODE_KNOWN_MODELS.to_vec(),
             CLAUDE_CODE_DOC_URL,

@@ -31,6 +31,7 @@ jobs:
         fetch-depth: 0 # to generate complete release log
 
     - uses: cashapp/activate-hermit@e49f5cb4dd64ff0b0b659d1d8df499595451155a # v1
+    - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6
 
     - name: Validate input and set old version
       run: |
@@ -57,7 +58,9 @@ jobs:
 
         just prepare-release $VERSION
         BRANCH_NAME=$(git branch --show-current)
+        HEAD_REF=$(git rev-parse HEAD)
         echo "branch_name=$BRANCH_NAME" >> $GITHUB_ENV
+        echo "head_ref=$HEAD_REF" >> $GITHUB_ENV
         echo "Branch: $BRANCH_NAME"
 
     - name: push release branch
@@ -68,7 +71,7 @@ jobs:
       uses: ./.github/actions/generate-release-pr-body
       with:
         version: ${{ env.version }}
-        head_ref: ${{ github.event.pull_request.head.sha || github.sha }}
+        head_ref: ${{ env.head_ref }}
         prior_ref: ${{ env.prior_ref }}
 
     - name: Create Pull Request
