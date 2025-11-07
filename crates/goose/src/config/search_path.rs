@@ -18,10 +18,11 @@ impl SearchPaths {
             .get_goose_search_paths()
             .unwrap_or_default();
 
+        paths.push("~/.local/bin".into());
+
         #[cfg(unix)]
         {
             paths.push("/usr/local/bin".into());
-            paths.push("~/.local/bin".into());
         }
 
         if cfg!(target_os = "macos") {
