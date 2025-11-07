@@ -345,7 +345,7 @@ derive_utoipa!(Icon as IconSchema);
         super::routes::config_management::update_custom_provider,
         super::routes::config_management::remove_custom_provider,
         super::routes::config_management::check_provider,
-        super::routes::config_management::set_provider,
+        super::routes::config_management::set_config_provider,
         super::routes::agent::start_agent,
         super::routes::agent::resume_agent,
         super::routes::agent::get_tools,

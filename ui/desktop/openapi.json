@@ -864,7 +864,7 @@
         "tags": [
           "super::routes::config_management"
         ],
-        "operationId": "set_provider",
+        "operationId": "set_config_provider",
         "requestBody": {
           "content": {
             "application/json": {

@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
 import { toastError, toastSuccess } from '../toasts';
 import Model, { getProviderMetadata } from './settings/models/modelInterface';
-import { ProviderMetadata, setProvider, updateAgentProvider } from '../api';
+import { ProviderMetadata, setConfigProvider, updateAgentProvider } from '../api';
 import { useConfig } from './ConfigContext';
 import {
   getModelDisplayName,
@@ -58,7 +58,7 @@ export const ModelAndProviderProvider: React.FC<ModelAndProviderProviderProps> =
       }
 
       phase = 'config';
-      await setProvider({
+      await setConfigProvider({
         body: {
           provider: providerName,
           model: modelName,
@@ -88,7 +88,7 @@ export const ModelAndProviderProvider: React.FC<ModelAndProviderProviderProps> =
     const model = window.appConfig.get('GOOSE_DEFAULT_MODEL') as string;
     if (provider && model) {
       try {
-        await setProvider({
+        await setConfigProvider({
           body: {
             provider: provider,
             model: model,

@@ -1594,7 +1594,7 @@ export type RemoveConfigResponses = {
 
 export type RemoveConfigResponse = RemoveConfigResponses[keyof RemoveConfigResponses];
 
-export type SetProviderData = {
+export type SetConfigProviderData = {
     body: SetProviderRequest;
     path?: never;
     query?: never;

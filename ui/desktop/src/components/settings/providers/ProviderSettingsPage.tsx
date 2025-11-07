@@ -3,7 +3,7 @@ import { ScrollArea } from '../../ui/scroll-area';
 import BackButton from '../../ui/BackButton';
 import ProviderGrid from './ProviderGrid';
 import { useConfig } from '../../ConfigContext';
-import { ProviderDetails, setProvider } from '../../../api';
+import { ProviderDetails, setConfigProvider } from '../../../api';
 import { toastService } from '../../../toasts';
 
 interface ProviderSettingsProps {
@@ -56,7 +56,7 @@ export default function ProviderSettings({ onClose, isOnboarding }: ProviderSett
       const model = provider.metadata.default_model;
 
       try {
-        await setProvider({
+        await setConfigProvider({
           body: {
             provider: provider_name,
             model,
