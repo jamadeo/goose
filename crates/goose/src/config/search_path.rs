@@ -26,6 +26,7 @@ impl SearchPaths {
 
         if cfg!(target_os = "macos") {
             paths.push("/opt/homebrew/bin".into());
+            paths.push("/opt/local/bin".into());
         }
 
         Self {
