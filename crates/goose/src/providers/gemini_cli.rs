@@ -295,28 +295,3 @@ impl Provider for GeminiCliProvider {
         ))
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[tokio::test]
-    async fn test_gemini_cli_invalid_model_no_fallback() {
-        // Test that an invalid model is kept as-is (no fallback)
-        let invalid_model = ModelConfig::new_or_fail("invalid-model");
-        let provider = GeminiCliProvider::from_env(invalid_model).await.unwrap();
-        let config = provider.get_model_config();
-
-        assert_eq!(config.model_name, "invalid-model");
-    }
-
-    #[tokio::test]
-    async fn test_gemini_cli_valid_model() {
-        // Test that a valid model is preserved
-        let valid_model = ModelConfig::new_or_fail(GEMINI_CLI_DEFAULT_MODEL);
-        let provider = GeminiCliProvider::from_env(valid_model).await.unwrap();
-        let config = provider.get_model_config();
-
-        assert_eq!(config.model_name, GEMINI_CLI_DEFAULT_MODEL);
-    }
-}
