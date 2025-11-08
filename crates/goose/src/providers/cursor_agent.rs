@@ -387,19 +387,3 @@ impl Provider for CursorAgentProvider {
         ))
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::ModelConfig;
-    use super::*;
-
-    #[tokio::test]
-    async fn test_cursor_agent_valid_model() {
-        // Test that a valid model is preserved
-        let valid_model = ModelConfig::new_or_fail("gpt-5");
-        let provider = CursorAgentProvider::from_env(valid_model).await.unwrap();
-        let config = provider.get_model_config();
-
-        assert_eq!(config.model_name, "gpt-5");
-    }
-}

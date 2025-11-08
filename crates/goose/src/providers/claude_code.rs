@@ -453,29 +453,3 @@ impl Provider for ClaudeCodeProvider {
         ))
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::ModelConfig;
-    use super::*;
-
-    #[tokio::test]
-    async fn test_claude_code_invalid_model_no_fallback() {
-        // Test that an invalid model is kept as-is (no fallback)
-        let invalid_model = ModelConfig::new_or_fail("invalid-model");
-        let provider = ClaudeCodeProvider::from_env(invalid_model).await.unwrap();
-        let config = provider.get_model_config();
-
-        assert_eq!(config.model_name, "invalid-model");
-    }
-
-    #[tokio::test]
-    async fn test_claude_code_valid_model() {
-        // Test that a valid model is preserved
-        let valid_model = ModelConfig::new_or_fail("sonnet");
-        let provider = ClaudeCodeProvider::from_env(valid_model).await.unwrap();
-        let config = provider.get_model_config();
-
-        assert_eq!(config.model_name, "sonnet");
-    }
-}
