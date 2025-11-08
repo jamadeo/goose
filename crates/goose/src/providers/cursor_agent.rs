@@ -15,6 +15,7 @@ use crate::config::base::CursorAgentCommand;
 use crate::config::search_path::SearchPaths;
 use crate::conversation::message::{Message, MessageContent};
 use crate::model::ModelConfig;
+use crate::subprocess::configure_command_no_window;
 use rmcp::model::Tool;
 
 pub const CURSOR_AGENT_DEFAULT_MODEL: &str = "auto";
@@ -194,6 +195,7 @@ impl CursorAgentProvider {
         }
 
         let mut cmd = Command::new(&self.command);
+        configure_command_no_window(&mut cmd);
 
         if let Ok(path) = SearchPaths::builder().with_npm().path() {
             cmd.env("PATH", path);

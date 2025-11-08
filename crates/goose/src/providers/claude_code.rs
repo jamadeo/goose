@@ -16,6 +16,7 @@ use crate::config::search_path::SearchPaths;
 use crate::config::{Config, GooseMode};
 use crate::conversation::message::{Message, MessageContent};
 use crate::model::ModelConfig;
+use crate::subprocess::configure_command_no_window;
 use rmcp::model::Tool;
 
 pub const CLAUDE_CODE_DEFAULT_MODEL: &str = "claude-sonnet-4-20250514";
@@ -269,6 +270,7 @@ impl ClaudeCodeProvider {
         }
 
         let mut cmd = Command::new(&self.command);
+        configure_command_no_window(&mut cmd);
         cmd.arg("-p")
             .arg(messages_json.to_string())
             .arg("--system-prompt")
