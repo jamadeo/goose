@@ -2,7 +2,7 @@ import { spawn, ChildProcess } from 'child_process';
 import { createServer } from 'net';
 import os from 'node:os';
 import path from 'node:path';
-import { getBinaryPath } from './utils/pathUtils';
+import { getGoosedBinaryPath } from './utils/pathUtils';
 import log from './utils/logger';
 import { App } from 'electron';
 import { Buffer } from 'node:buffer';
@@ -94,7 +94,7 @@ export const startGoosed = async (
     return connectToExternalBackend(dir, 3000);
   }
 
-  let goosedPath = getBinaryPath(app, 'goosed');
+  let goosedPath = getGoosedBinaryPath(app);
 
   const resolvedGoosedPath = path.resolve(goosedPath);
 
