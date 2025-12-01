@@ -13,8 +13,8 @@
     />
     <Card 
       title="Creating Plans Before Working"
-      description="Manual planning mode that uses a dedicated model to break complex projects into detailed, actionable steps."
-      link="/docs/guides/multi-model/creating-plans"
+      description="Manual planning mode that optionally uses a dedicated model to break complex projects into detailed, actionable steps."
+      link="/docs/guides/creating-plans"
     />
     <Card 
       title="Planning Complex Tasks"
