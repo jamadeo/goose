@@ -20,7 +20,7 @@
 
 
 <link rel="alternate" type="text/plain" title="LLM context" href="/goose/llms.txt"><link rel="stylesheet" href="/goose/assets/css/styles.bd23416c.css">
-<script src="/goose/assets/js/runtime~main.b674eef2.js" defer="defer"></script>
+<script src="/goose/assets/js/runtime~main.26797a6c.js" defer="defer"></script>
 <script src="/goose/assets/js/main.544945b7.js" defer="defer"></script>
 </head>
 <body class="navigation-with-keyboard">
@@ -46,7 +46,7 @@
 <p>We&#x27;ve covered headless mode in <a href="https://block.github.io/goose/docs/tutorials/headless-goose/" target="_blank" rel="noopener noreferrer" class="">tutorials</a> and <a href="https://www.youtube.com/@goose-oss/search?query=headless" target="_blank" rel="noopener noreferrer" class="">videos</a>, but here&#x27;s a quick recap: headless mode allows Goose to run without a graphical user interface, making it faster and more efficient for automated tasks. It excels in server environments as long as we&#x27;re being <em>really</em> clear about the instructions to follow, or a fallback if the instructions cannot be followed -- we don&#x27;t want something half-finished or broken as a result if Goose gets stuck on what to do.</p>
 <p>We launch the Docker container with something like this:</p>
 <div class="language-bash codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#393A34;--prism-background-color:#f6f8fa"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-bash codeBlock_bY9V thin-scrollbar" style="color:#393A34;background-color:#f6f8fa"><code class="codeBlockLines_e6Vv"><span class="token-line" style="color:#393A34"><span class="token plain">docker run --rm \</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">    -e AIMODEL_API_KEY=&quot;$AIMODEL_API_KEY&quot; \</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">    -v &quot;$PWD/$RECIPE_FILE:/input/recipe.yaml:ro&quot; \</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">    -v &quot;$RECIPE_OUT:/output&quot; \</span><br></span></code></pre></div></div>
-<p>The first thing we&#x27;re passing into Docker is the API key for whichever AI model we&#x27;re using. i&#x27;m just using a placeholder of &quot;AIMDOEL_API_KEY&quot; but you would change this to OPENAI_API_KEY or GEMINI_API_KEY etc depending on the LLM you want Goose to use in your container.</p>
+<p>The first thing we&#x27;re passing into Docker is the API key for whichever AI model we&#x27;re using. i&#x27;m just using a placeholder of &quot;AIMODEL_API_KEY&quot; but you would change this to OPENAI_API_KEY or GEMINI_API_KEY etc depending on the LLM you want Goose to use in your container.</p>
 <p>Next, we&#x27;re passing in the user&#x27;s recipe that we&#x27;re getting from GitHub, and then we have our &quot;output&quot; for logs and analysis.</p>
 <h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="looking-inside-the-container">Looking Inside the Container<a href="#looking-inside-the-container" class="hash-link" aria-label="Direct link to Looking Inside the Container" title="Direct link to Looking Inside the Container" translate="no">​</a></h3>
 <p>Inside the container, we&#x27;re installing Goose, and passing in a configuration file for which AI provider and model we want to use, plus a &quot;base&quot; recipe that tells Goose how to analyze the user&#x27;s recipe. That recipe is also reinforcing a role of Goose being a security expert.</p>
