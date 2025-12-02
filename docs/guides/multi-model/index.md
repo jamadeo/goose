@@ -39,3 +39,27 @@
     />
   </div>
 </div>
+
+<div className={styles.categorySection}>
+  <h2 className={styles.categoryTitle}>🎥 More Videos</h2>
+
+<VideoCarousel
+  id="more-videos"
+  videos={[
+    { 
+      type: 'iframe', 
+      src: 'https://www.youtube.com/embed/ZyhUTsChFUw',
+      title: 'goose\'s Multi-Model Setup',
+      description: 'Learn about lead/worker mode, from configuration to best practices',
+      duration: '5:01'
+    },
+    { 
+      type: 'iframe', 
+      src: 'https://www.youtube.com/embed/SJ6EZpyCKrk',
+      title: 'Livestream - LLM Tag Team: Who Plans, Who Executes?',
+      description: 'Using lead/worker mode to add features to the goose docs in real time',
+      duration: '9:36'
+    }
+  ]}
+/>
+</div>
