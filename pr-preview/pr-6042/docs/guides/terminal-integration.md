@@ -4,7 +4,7 @@ Talk to goose directly from your shell prompt. Instead of switching to a separat
 
 ## Setup
 
-<Tabs>
+<Tabs groupId="shells">
 <TabItem value="zsh" label="zsh" default>
 
 Add to `~/.zshrc`:
@@ -63,7 +63,7 @@ goose automatically sees the commands you've run since your last question, so yo
 ## Named Sessions
 By default, each terminal gets its own goose session that lasts until you close it. Named sessions let you continue conversations across terminal restarts and share context between windows.
 
-<Tabs>
+<Tabs groupId="shells">
 <TabItem value="zsh" label="zsh" default>
 
 ```bash
@@ -111,7 +111,7 @@ eval "$(goose term init zsh --name auth-bug)"
 
 Add `goose term info` to your prompt to see how much context you've used and which model is active during a terminal goose session. 
 
-<Tabs>
+<Tabs groupId="shells">
 <TabItem value="zsh" label="zsh" default>
 
 ```bash
@@ -148,8 +148,11 @@ function prompt {
 </TabItem>
 </Tabs>
 
-Example output: `●●○○○ sonnet` (context usage and model name, shortened for readability)
+Your terminal prompt now shows the context usage and model name (shortened for readability) for the active goose session. For example:
 
+```bash
+●●○○○ sonnet ~/projects $
+```
 ## Troubleshooting
 
 **goose doesn't see recent commands:**
