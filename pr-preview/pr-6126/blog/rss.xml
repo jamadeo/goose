@@ -47,7 +47,7 @@ MCP server with ease!</p>
 <h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="help-us-evaluate-it">Help us evaluate it<a href="https://block.github.io/goose/pr-preview/pr-6126/blog/2025/12/15/code-mode-mcp#help-us-evaluate-it" class="hash-link" aria-label="Direct link to Help us evaluate it" title="Direct link to Help us evaluate it" translate="no">​</a></h2>
 <p>Our hope is that by implementing this idea, we improve tool calling performance and handling of large numbers of tools in goose, but
 also provide a open source implementation of this emerging approach. Try out the feature by enabling the "Code Execution" extension
-in 1.17.0 or later of goose, and give us feedback on how it works for you by joining our <a href="https://discord.gg/goose-oss" target="_blank" rel="noopener noreferrer" class="">discord</a>.</p>
+in v1.17.0 or later of goose, and give us feedback on how it works for you by joining our <a href="https://discord.gg/goose-oss" target="_blank" rel="noopener noreferrer" class="">discord</a>.</p>
 <p>Kudos to my colleague <a href="https://github.com/michaelneale" target="_blank" rel="noopener noreferrer" class="">Mic Neale</a> for collaborating with me on the implementation.</p>
 ]]></content:encoded>
         </item>
