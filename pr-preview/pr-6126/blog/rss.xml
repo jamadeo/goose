@@ -33,7 +33,7 @@ posts. Since the approach and the benefits are clearly laid out in those posts I
 <h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="benefits">Benefits<a href="https://block.github.io/goose/pr-preview/pr-6126/blog/2025/12/15/code-mode-mcp#benefits" class="hash-link" aria-label="Direct link to Benefits" title="Direct link to Benefits" translate="no">​</a></h3>
 <ul>
 <li class="">The model can progressively discover relevant tools, without all server and tool definitions in the context window from the beginning</li>
-<li class="">The model can chain tool call results into inputs to further tool calls without the intermediate results needing to flow back to the model, costing tokens and exposing data which is potentially sensitive to the model unecessarily</li>
+<li class="">The model can chain tool call results into inputs to further tool calls without the intermediate results needing to flow back to the model, costing tokens and exposing data which is potentially sensitive to the model unnecessarily</li>
 <li class="">The models pre-training datasets have made them very efficient at analyzing large programmatic APIs and deciding how to usefully call them, as compared to having been trained only on contrived examples of MCP tool calling</li>
 </ul>
 <h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="in-goose">In goose<a href="https://block.github.io/goose/pr-preview/pr-6126/blog/2025/12/15/code-mode-mcp#in-goose" class="hash-link" aria-label="Direct link to In goose" title="Direct link to In goose" translate="no">​</a></h2>
@@ -41,12 +41,12 @@ posts. Since the approach and the benefits are clearly laid out in those posts I
 Our implementation generates a JavaScript interface representing the connected MCP tools and then lets the model write code to run
 against it in <a href="https://github.com/boa-dev/boa" target="_blank" rel="noopener noreferrer" class="">boa</a> which is an embeddable Javascript engine. One neat feature of boa we were able
 to take advantage of was the concept of <a href="https://docs.rs/boa_engine/latest/boa_engine/native_function/struct.NativeFunction.html" target="_blank" rel="noopener noreferrer" class="">NativeFunction</a>.</p>
-<p>In boa, a <code>NativeFunction</code> is something which exposes a function in the embeddded JavaScript environment which calls back into a
+<p>In boa, a <code>NativeFunction</code> is something which exposes a function in the embedded JavaScript environment which calls back into a
 natively implemented rust function. This is perfect for the calls originating in JS and then routing the tool call to the underlying
 MCP server with ease!</p>
 <h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="help-us-evaluate-it">Help us evaluate it<a href="https://block.github.io/goose/pr-preview/pr-6126/blog/2025/12/15/code-mode-mcp#help-us-evaluate-it" class="hash-link" aria-label="Direct link to Help us evaluate it" title="Direct link to Help us evaluate it" translate="no">​</a></h2>
 <p>Our hope is that by implementing this idea, we improve tool calling performance and handling of large numbers of tools in goose, but
-also provide a open source implementation of this emerging approach. Try out the feature by enabling the "Code Execution" extension
+also provide an open source implementation of this emerging approach. Try out the feature by enabling the "Code Execution" extension
 in v1.17.0 or later of goose, and give us feedback on how it works for you by joining our <a href="https://discord.gg/goose-oss" target="_blank" rel="noopener noreferrer" class="">discord</a>.</p>
 <p>Kudos to my colleague <a href="https://github.com/michaelneale" target="_blank" rel="noopener noreferrer" class="">Mic Neale</a> for collaborating with me on the implementation.</p>
 ]]></content:encoded>
