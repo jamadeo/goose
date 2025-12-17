@@ -62,4 +62,4 @@ jobs:
       - name: Clean up gh-pages branch
         run: |
           bash scripts/clean-gh-pages.sh
-          git push origin gh-pages --force
+          git push origin $(git rev-parse origin/gh-pages):gh-pages --force
