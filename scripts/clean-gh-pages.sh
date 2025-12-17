@@ -36,4 +36,4 @@ if [ ! -s "$REMOVE_PATHS_FILE" ]; then
     exit 0
 fi
 
-uvx git-filter-repo --paths-from-file "$REMOVE_PATHS_FILE" --invert-paths --refs origin/gh-pages
+uvx git-filter-repo@2.47.0 --paths-from-file "$REMOVE_PATHS_FILE" --invert-paths --refs origin/gh-pages
