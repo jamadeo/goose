@@ -1,5 +1,5 @@
 ---
-title: "How to Stop Your AI Agent From Making Unwanted Code Changes"
+title: "How to Stop Your AI Agent From Making Unwanted Code Changes!"
 description: Teach your AI agent how to commit early and often so you can control changes, roll back safely, and keep clean snapshots of your codebase.
 authors: 
     - rizel
