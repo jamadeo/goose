@@ -1,5 +1,5 @@
 ---
-title: "When AI Meets AI: Goose Desktop and CLI Collaborate"
+title: "When AI Meets AI: Goose Desktop and CLI Collaborate!"
 description: I told Goose Desktop to go have a conversation with Goose CLI and what happened next was fascinating!
 authors: 
     - angie
