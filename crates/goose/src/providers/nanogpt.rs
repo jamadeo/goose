@@ -3,12 +3,14 @@ use super::base::{ConfigKey, MessageStream, Provider, ProviderDef, ProviderMetad
 use super::errors::ProviderError;
 use super::openai_compatible::{handle_status, stream_openai_compat};
 use super::retry::ProviderRetry;
+use super::runtime::GooseProviderRuntime;
 use super::utils::{ImageFormat, RequestLog};
 use crate::conversation::message::Message;
 use crate::providers::formats::openai::create_request;
 use anyhow::Result;
 use async_trait::async_trait;
 use futures::future::BoxFuture;
+use goose_providers::runtime::ProviderRuntime;
 use goose_types::ModelConfig;
 use rmcp::model::Tool;
 
@@ -55,8 +57,8 @@ impl NanoGptProvider {
     }
 
     pub async fn from_env(model: ModelConfig) -> Result<Self> {
-        let config = crate::config::Config::global();
-        let api_key: String = config.get_secret(NANOGPT_API_KEY)?;
+        let runtime = GooseProviderRuntime;
+        let api_key = runtime.get_secret(NANOGPT_API_KEY)?;
 
         let is_subscription = Self::check_subscription(&api_key).await;
         let host = if is_subscription {
