@@ -23,6 +23,7 @@ tracing = { workspace = true }
 thiserror = { workspace = true }
 chrono = { workspace = true }
 once_cell = { workspace = true }
+rand = { workspace = true, features = ["std_rng"] }
 regex = { workspace = true }
 reqwest = { workspace = true, features = ["json"] }
 serde = { workspace = true }
