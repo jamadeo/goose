@@ -1,4 +1,5 @@
 pub mod canonical;
 pub mod errors;
 pub mod http_status;
+pub mod retry;
 pub mod runtime;
