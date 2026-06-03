@@ -48,6 +48,17 @@ impl fmt::Display for ThinkingEffort {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ToSchema)]
+pub struct ThinkingContent {
+    pub thinking: String,
+    pub signature: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ToSchema)]
+pub struct RedactedThinkingContent {
+    pub data: String,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProviderUsage {
     pub model: String,
