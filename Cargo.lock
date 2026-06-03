@@ -4567,7 +4567,6 @@ dependencies = [
  "tree-sitter-rust",
  "tree-sitter-swift",
  "tree-sitter-typescript",
- "unicode-normalization",
  "url",
  "urlencoding",
  "utoipa 4.2.3",
@@ -4791,11 +4790,15 @@ name = "goose-types"
 version = "1.37.0"
 dependencies = [
  "base64 0.22.1",
+ "chrono",
  "regex",
  "rmcp",
  "serde",
  "serde_json",
+ "tracing",
+ "unicode-normalization",
  "utoipa 4.2.3",
+ "uuid",
 ]
 
 [[package]]

@@ -1,5 +1,4 @@
 use tokio_util::sync::CancellationToken;
-use unicode_normalization::UnicodeNormalization;
 
 /// Encode bytes as a lowercase hexadecimal string.
 ///
@@ -18,25 +17,7 @@ pub fn bytes_to_hex(bytes: impl AsRef<[u8]>) -> String {
     output
 }
 
-/// Check if a character is in the Unicode Tags Block range (U+E0000-U+E007F)
-/// These characters are invisible and can be used for steganographic attacks
-fn is_in_unicode_tag_range(c: char) -> bool {
-    matches!(c, '\u{E0000}'..='\u{E007F}')
-}
-
-pub fn contains_unicode_tags(text: &str) -> bool {
-    text.chars().any(is_in_unicode_tag_range)
-}
-
-/// Sanitize Unicode Tags Block characters from text
-pub fn sanitize_unicode_tags(text: &str) -> String {
-    let normalized: String = text.nfc().collect();
-
-    normalized
-        .chars()
-        .filter(|&c| !is_in_unicode_tag_range(c))
-        .collect()
-}
+pub use goose_types::{contains_unicode_tags, sanitize_unicode_tags};
 
 /// Safely truncate a string at character boundaries, not byte boundaries
 ///
