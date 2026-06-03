@@ -16,8 +16,8 @@ use tokio::process::Command;
 use tokio::sync::oneshot;
 
 use super::base::{
-    stream_from_single_message, ConfigKey, MessageStream, PermissionRouting, Provider, ProviderDef,
-    ProviderMetadata, ProviderUsage, Usage,
+    config_key_from_config_value_type, stream_from_single_message, MessageStream,
+    PermissionRouting, Provider, ProviderDef, ProviderMetadata, ProviderUsage, Usage,
 };
 use super::errors::ProviderError;
 use super::utils::filter_extensions_from_system_prompt;
@@ -594,7 +594,7 @@ impl ProviderDef for ClaudeCodeProvider {
             // Only a few agentic choices; fetched dynamically via fetch_supported_models.
             vec![],
             CLAUDE_CODE_DOC_URL,
-            vec![ConfigKey::from_value_type::<ClaudeCodeCommand>(
+            vec![config_key_from_config_value_type::<ClaudeCodeCommand>(
                 true, false, true,
             )],
         )

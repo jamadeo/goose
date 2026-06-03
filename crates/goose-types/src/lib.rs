@@ -150,6 +150,130 @@ impl Usage {
     }
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct ConfigKey {
+    pub name: String,
+    pub required: bool,
+    pub secret: bool,
+    pub default: Option<String>,
+    pub oauth_flow: bool,
+    #[serde(default)]
+    pub device_code_flow: bool,
+    #[serde(default)]
+    pub primary: bool,
+}
+
+impl ConfigKey {
+    pub fn new(
+        name: &str,
+        required: bool,
+        secret: bool,
+        default: Option<&str>,
+        primary: bool,
+    ) -> Self {
+        Self {
+            name: name.to_string(),
+            required,
+            secret,
+            default: default.map(|s| s.to_string()),
+            oauth_flow: false,
+            device_code_flow: false,
+            primary,
+        }
+    }
+
+    pub fn new_oauth(
+        name: &str,
+        required: bool,
+        secret: bool,
+        default: Option<&str>,
+        primary: bool,
+    ) -> Self {
+        Self {
+            name: name.to_string(),
+            required,
+            secret,
+            default: default.map(|s| s.to_string()),
+            oauth_flow: true,
+            device_code_flow: false,
+            primary,
+        }
+    }
+
+    pub fn new_oauth_device_code(
+        name: &str,
+        required: bool,
+        secret: bool,
+        default: Option<&str>,
+        primary: bool,
+    ) -> Self {
+        Self {
+            name: name.to_string(),
+            required,
+            secret,
+            default: default.map(|s| s.to_string()),
+            oauth_flow: true,
+            device_code_flow: true,
+            primary,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq)]
+pub struct ModelInfo {
+    pub name: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub resolved_model: Option<String>,
+    pub context_limit: usize,
+    pub input_token_cost: Option<f64>,
+    pub output_token_cost: Option<f64>,
+    pub currency: Option<String>,
+    pub supports_cache_control: Option<bool>,
+    #[serde(default)]
+    pub reasoning: bool,
+}
+
+impl ModelInfo {
+    pub fn new(name: impl Into<String>, context_limit: usize) -> Self {
+        Self {
+            name: name.into(),
+            resolved_model: None,
+            context_limit,
+            input_token_cost: None,
+            output_token_cost: None,
+            currency: None,
+            supports_cache_control: None,
+            reasoning: false,
+        }
+    }
+
+    pub fn with_cost(
+        name: impl Into<String>,
+        context_limit: usize,
+        input_cost: f64,
+        output_cost: f64,
+    ) -> Self {
+        Self {
+            name: name.into(),
+            resolved_model: None,
+            context_limit,
+            input_token_cost: Some(input_cost),
+            output_token_cost: Some(output_cost),
+            currency: Some("$".to_string()),
+            supports_cache_control: None,
+            reasoning: false,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
+pub enum ProviderType {
+    Preferred,
+    Builtin,
+    Declarative,
+    Custom,
+}
+
 #[derive(Debug, Clone, Default, Serialize, ToSchema)]
 pub struct ModelConfig {
     pub model_name: String,

@@ -18,7 +18,7 @@ use crate::config::base::GeminiCliCommand;
 use crate::config::search_path::SearchPaths;
 use crate::config::Config;
 use crate::conversation::message::{Message, MessageContent};
-use crate::providers::base::ConfigKey;
+use crate::providers::base::config_key_from_config_value_type;
 use crate::subprocess::configure_subprocess;
 use async_stream::try_stream;
 use futures::future::BoxFuture;
@@ -165,7 +165,7 @@ impl ProviderDef for GeminiCliProvider {
             GEMINI_CLI_DEFAULT_MODEL,
             GEMINI_CLI_KNOWN_MODELS.to_vec(),
             GEMINI_CLI_DOC_URL,
-            vec![ConfigKey::from_value_type::<GeminiCliCommand>(
+            vec![config_key_from_config_value_type::<GeminiCliCommand>(
                 true, false, true,
             )],
         )

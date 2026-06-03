@@ -8,8 +8,8 @@ use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::Command;
 
 use super::base::{
-    stream_from_single_message, ConfigKey, MessageStream, Provider, ProviderDef, ProviderMetadata,
-    ProviderUsage, Usage,
+    config_key_from_config_value_type, stream_from_single_message, MessageStream, Provider,
+    ProviderDef, ProviderMetadata, ProviderUsage, Usage,
 };
 use super::errors::ProviderError;
 use super::utils::{filter_extensions_from_system_prompt, RequestLog};
@@ -287,7 +287,7 @@ impl ProviderDef for CursorAgentProvider {
             CURSOR_AGENT_DEFAULT_MODEL,
             CURSOR_AGENT_KNOWN_MODELS.to_vec(),
             CURSOR_AGENT_DOC_URL,
-            vec![ConfigKey::from_value_type::<CursorAgentCommand>(
+            vec![config_key_from_config_value_type::<CursorAgentCommand>(
                 true, false, true,
             )],
         )
