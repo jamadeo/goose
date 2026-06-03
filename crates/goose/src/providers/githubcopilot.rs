@@ -1,5 +1,5 @@
 use crate::config::paths::Paths;
-use crate::providers::api_client::{ApiClient, AuthMethod};
+use crate::providers::api_client::AuthMethod;
 use crate::providers::oauth_device_flow::{run_device_flow, DeviceFlowConfig, RequestEncoding};
 use crate::providers::openai_compatible::{
     handle_status, stream_openai_compat, stream_responses_compat,
@@ -270,7 +270,9 @@ impl GithubCopilotProvider {
         }
         let initiator = if is_user_initiated { "user" } else { "agent" };
         headers.insert("X-Initiator", initiator.parse().unwrap());
-        let api_client = ApiClient::new(endpoint.clone(), auth)?.with_headers(headers)?;
+        let api_client =
+            crate::providers::api_client::api_client_from_goose_config(endpoint.clone(), auth)?
+                .with_headers(headers)?;
 
         api_client
             .response_post(session_id, path, payload)

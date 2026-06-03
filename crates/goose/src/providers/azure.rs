@@ -1,7 +1,7 @@
 use anyhow::Result;
 use async_trait::async_trait;
 
-use super::api_client::{ApiClient, AuthMethod, AuthProvider};
+use super::api_client::{AuthMethod, AuthProvider};
 use super::azureauth::{AuthError, AzureAuth};
 use super::base::{ConfigKey, ProviderDef, ProviderMetadata};
 use super::openai_compatible::OpenAiCompatibleProvider;
@@ -99,7 +99,10 @@ impl ProviderDef for AzureProvider {
 
             let auth_provider = AzureAuthProvider { auth };
             let host = format!("{}/openai", endpoint.trim_end_matches('/'));
-            let mut api_client = ApiClient::new(host, AuthMethod::Custom(Box::new(auth_provider)))?;
+            let mut api_client = crate::providers::api_client::api_client_from_goose_config(
+                host,
+                AuthMethod::Custom(Box::new(auth_provider)),
+            )?;
             if let Some(version) = api_version {
                 api_client = api_client.with_query(vec![("api-version".to_string(), version)]);
             }

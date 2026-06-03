@@ -251,7 +251,12 @@ fn build_api_client(provider: DictationProvider) -> Result<(ApiClient, String)> 
         DictationProvider::Local => anyhow::bail!("Local provider should not use API client"),
     };
 
-    let mut client = ApiClient::with_timeout(base_url, auth, REQUEST_TIMEOUT).map_err(|e| {
+    let mut client = crate::providers::api_client::api_client_from_goose_config_with_timeout(
+        base_url,
+        auth,
+        REQUEST_TIMEOUT,
+    )
+    .map_err(|e| {
         tracing::error!("Failed to create API client: {}", e);
         e
     })?;

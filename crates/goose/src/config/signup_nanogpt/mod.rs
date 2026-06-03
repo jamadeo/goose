@@ -23,8 +23,11 @@ struct PollResponse {
 }
 
 fn build_client() -> Result<ApiClient> {
-    ApiClient::new(NANOGPT_CLI_LOGIN_HOST.to_string(), AuthMethod::NoAuth)?
-        .with_header("x-client", "goose")
+    crate::providers::api_client::api_client_from_goose_config(
+        NANOGPT_CLI_LOGIN_HOST.to_string(),
+        AuthMethod::NoAuth,
+    )?
+    .with_header("x-client", "goose")
 }
 
 async fn poll_for_token(client: &ApiClient, device_code: &str) -> Result<String> {

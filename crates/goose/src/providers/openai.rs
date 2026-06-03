@@ -237,11 +237,12 @@ impl OpenAiProvider {
             Some(key) if !key.is_empty() => AuthMethod::BearerToken(key),
             _ => AuthMethod::NoAuth,
         };
-        let mut api_client = ApiClient::with_timeout(
-            parsed.host,
-            auth,
-            std::time::Duration::from_secs(timeout_secs),
-        )?;
+        let mut api_client =
+            crate::providers::api_client::api_client_from_goose_config_with_timeout(
+                parsed.host,
+                auth,
+                std::time::Duration::from_secs(timeout_secs),
+            )?;
 
         if !parsed.query_params.is_empty() {
             api_client = api_client.with_query(parsed.query_params);
@@ -401,7 +402,11 @@ impl OpenAiProvider {
             _ => AuthMethod::NoAuth,
         };
         let mut api_client =
-            ApiClient::with_timeout(host, auth, std::time::Duration::from_secs(timeout_secs))?;
+            crate::providers::api_client::api_client_from_goose_config_with_timeout(
+                host,
+                auth,
+                std::time::Duration::from_secs(timeout_secs),
+            )?;
 
         // Add custom headers if present
         if let Some(headers) = &config.headers {
@@ -966,7 +971,11 @@ mod tests {
 
     fn make_provider(name: &str) -> OpenAiProvider {
         OpenAiProvider {
-            api_client: ApiClient::new("http://localhost".to_string(), AuthMethod::NoAuth).unwrap(),
+            api_client: crate::providers::api_client::api_client_from_goose_config(
+                "http://localhost".to_string(),
+                AuthMethod::NoAuth,
+            )
+            .unwrap(),
             base_path: "v1/chat/completions".to_string(),
             organization: None,
             project: None,
@@ -1265,7 +1274,11 @@ mod tests {
         dynamic_models: Option<bool>,
     ) -> OpenAiProvider {
         OpenAiProvider {
-            api_client: ApiClient::new(server_uri.to_string(), AuthMethod::NoAuth).unwrap(),
+            api_client: crate::providers::api_client::api_client_from_goose_config(
+                server_uri.to_string(),
+                AuthMethod::NoAuth,
+            )
+            .unwrap(),
             base_path: "v1/chat/completions".to_string(),
             organization: None,
             project: None,

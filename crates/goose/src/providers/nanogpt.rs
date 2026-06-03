@@ -32,7 +32,7 @@ pub struct NanoGptProvider {
 
 impl NanoGptProvider {
     fn build_client(host: &str, api_key: &str) -> Result<ApiClient> {
-        ApiClient::new(
+        crate::providers::api_client::api_client_from_goose_config(
             host.to_string(),
             AuthMethod::BearerToken(api_key.to_string()),
         )?

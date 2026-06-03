@@ -64,7 +64,11 @@ impl LiteLLMProvider {
         };
 
         let mut api_client =
-            ApiClient::with_timeout(host, auth, std::time::Duration::from_secs(timeout_secs))?;
+            crate::providers::api_client::api_client_from_goose_config_with_timeout(
+                host,
+                auth,
+                std::time::Duration::from_secs(timeout_secs),
+            )?;
 
         if let Some(headers) = custom_headers {
             let mut header_map = reqwest::header::HeaderMap::new();

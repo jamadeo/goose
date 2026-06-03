@@ -132,7 +132,7 @@ impl DatabricksProvider {
             token_cache: token_cache.clone(),
         }));
 
-        let api_client = ApiClient::with_timeout(
+        let api_client = crate::providers::api_client::api_client_from_goose_config_with_timeout(
             host.clone(),
             auth_method,
             Duration::from_secs(DEFAULT_PROVIDER_TIMEOUT_SECS),
@@ -201,7 +201,7 @@ impl DatabricksProvider {
             token_cache: token_cache.clone(),
         }));
 
-        let api_client = ApiClient::with_timeout(
+        let api_client = crate::providers::api_client::api_client_from_goose_config_with_timeout(
             host.clone(),
             auth_method,
             Duration::from_secs(DEFAULT_PROVIDER_TIMEOUT_SECS),
@@ -879,7 +879,7 @@ mod tests {
 
     fn test_provider() -> DatabricksProvider {
         DatabricksProvider {
-            api_client: super::super::api_client::ApiClient::new(
+            api_client: super::super::api_client::api_client_from_goose_config(
                 "https://example.com".to_string(),
                 super::super::api_client::AuthMethod::NoAuth,
             )
