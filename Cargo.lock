@@ -4678,12 +4678,16 @@ name = "goose-providers"
 version = "1.37.0"
 dependencies = [
  "anyhow",
+ "chrono",
  "once_cell",
  "regex",
  "reqwest 0.13.4",
  "serde",
  "serde_json",
+ "thiserror 1.0.69",
  "tokio",
+ "tracing",
+ "url",
 ]
 
 [[package]]

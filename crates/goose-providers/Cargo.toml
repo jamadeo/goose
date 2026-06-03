@@ -18,6 +18,10 @@ native-tls = ["reqwest/native-tls"]
 
 [dependencies]
 anyhow = { workspace = true }
+url = { workspace = true }
+tracing = { workspace = true }
+thiserror = { workspace = true }
+chrono = { workspace = true }
 once_cell = { workspace = true }
 regex = { workspace = true }
 reqwest = { workspace = true, features = ["json"] }
