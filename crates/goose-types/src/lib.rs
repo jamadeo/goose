@@ -59,6 +59,15 @@ pub struct RedactedThinkingContent {
     pub data: String,
 }
 
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct InferenceMetadata {
+    pub provider: String,
+    pub requested_model: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub resolved_model: Option<String>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProviderUsage {
     pub model: String,
