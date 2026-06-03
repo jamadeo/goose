@@ -4,7 +4,7 @@ use crate::conversation::{merge_consecutive_messages, Conversation};
 use crate::prompt_template::render_template;
 #[cfg(test)]
 use crate::providers::base::{stream_from_single_message, MessageStream};
-use crate::providers::base::{Provider, ProviderUsage};
+use crate::providers::base::{Provider, ProviderUsage, ProviderUsageExt};
 use crate::providers::errors::ProviderError;
 use crate::{config::Config, token_counter::create_token_counter};
 use anyhow::Result;
