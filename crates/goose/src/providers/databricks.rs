@@ -1,3 +1,4 @@
+use crate::model::GooseModelConfigExt;
 use anyhow::Result;
 use async_trait::async_trait;
 use futures::future::BoxFuture;
@@ -26,11 +27,11 @@ use super::utils::{is_openai_responses_model, ImageFormat, RequestLog};
 use crate::config::ConfigError;
 use crate::conversation::message::Message;
 use crate::instance_id::get_instance_id;
-use crate::model::ModelConfig;
 use crate::providers::retry::{
     RetryConfig, DEFAULT_BACKOFF_MULTIPLIER, DEFAULT_INITIAL_RETRY_INTERVAL_MS,
     DEFAULT_MAX_RETRIES, DEFAULT_MAX_RETRY_INTERVAL_MS,
 };
+use goose_types::ModelConfig;
 use rmcp::model::Tool;
 use serde_json::json;
 
@@ -462,12 +463,12 @@ impl DatabricksProvider {
 
     fn model_info_from_endpoint(info: DatabricksEndpointInfo) -> ModelInfo {
         let context_model = info.upstream_model_name.as_deref().unwrap_or(&info.name);
-        let context_limit = ModelConfig::new_or_fail(context_model)
+        let context_limit = crate::model::model_config_or_fail(context_model)
             .with_canonical_limits(DATABRICKS_PROVIDER_NAME)
             .context_limit();
-        let reasoning = info
-            .reasoning
-            .unwrap_or_else(|| ModelConfig::new_or_fail(context_model).is_reasoning_model());
+        let reasoning = info.reasoning.unwrap_or_else(|| {
+            crate::model::model_config_or_fail(context_model).is_reasoning_model()
+        });
 
         ModelInfo {
             name: info.name,
@@ -885,7 +886,7 @@ mod tests {
             .unwrap(),
             host: "https://example.com".to_string(),
             auth: DatabricksAuth::Token("fake".into()),
-            model: ModelConfig::new_or_fail("databricks-gpt-5.4"),
+            model: crate::model::model_config_or_fail("databricks-gpt-5.4"),
             image_format: ImageFormat::OpenAi,
             retry_config: RetryConfig::default(),
             fast_retry_config: RetryConfig::new(0, 0, 1.0, 0),

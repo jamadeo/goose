@@ -17,12 +17,12 @@ use goose::acp::server::AcpProviderFactory;
 use goose::config::base::CONFIG_YAML_NAME;
 use goose::config::GooseMode;
 use goose::conversation::message::Message;
-use goose::model::ModelConfig;
 use goose::providers::base::{
     stream_from_single_message, MessageStream, Provider, ProviderUsage, Usage,
 };
 use goose::providers::errors::ProviderError;
 use goose_test_support::{McpFixture, FAKE_CODE, TEST_IMAGE_B64, TEST_MODEL};
+use goose_types::ModelConfig;
 use sqlx::sqlite::SqlitePoolOptions;
 use std::sync::Arc;
 use std::time::Duration;

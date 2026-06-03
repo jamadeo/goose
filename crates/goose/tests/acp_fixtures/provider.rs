@@ -12,11 +12,11 @@ use futures::StreamExt;
 use goose::acp::{AcpProvider, AcpProviderConfig};
 use goose::config::{GooseMode, PermissionManager};
 use goose::conversation::message::{ActionRequiredData, Message, MessageContent};
-use goose::model::ModelConfig;
 use goose::permission::permission_confirmation::PrincipalType;
 use goose::permission::{Permission, PermissionConfirmation};
 use goose::providers::base::Provider;
 use goose_test_support::{ExpectedSessionId, IgnoreSessionId, TEST_MODEL};
+use goose_types::ModelConfig;
 use std::collections::{HashMap, HashSet};
 use std::str::FromStr;
 use std::sync::Arc;
@@ -203,7 +203,7 @@ impl Connection for AcpProviderConnection {
         };
         let provider = AcpProvider::connect_with_transport(
             "acp-test".to_string(),
-            ModelConfig::new(TEST_MODEL).unwrap(),
+            goose::model::model_config_from_goose_config(TEST_MODEL).unwrap(),
             goose_mode,
             provider_config,
             transport,

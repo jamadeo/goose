@@ -1,3 +1,4 @@
+use crate::model::GooseModelConfigExt;
 use anyhow::Result;
 use async_trait::async_trait;
 use futures::future::BoxFuture;
@@ -16,10 +17,10 @@ use crate::config::base::ConfigValue;
 use crate::config::{Config, ExtensionConfig, GooseMode};
 use crate::conversation::message::{Message, MessageContent};
 use crate::conversation::Conversation;
-use crate::model::ModelConfig;
 use crate::permission::PermissionConfirmation;
 use crate::utils::safe_truncate;
 use goose_providers::canonical::{map_to_canonical_model, CanonicalModelRegistry, Modality};
+use goose_types::ModelConfig;
 use rmcp::model::Tool;
 use utoipa::ToSchema;
 
@@ -449,12 +450,12 @@ fn model_info_for_provider_model(provider_name: &str, model_name: &str) -> Model
     let reasoning = canonical
         .as_ref()
         .and_then(|model| model.reasoning)
-        .unwrap_or_else(|| ModelConfig::new_or_fail(model_name).is_reasoning_model());
+        .unwrap_or_else(|| crate::model::model_config_or_fail(model_name).is_reasoning_model());
 
     ModelInfo {
         name: model_name.to_string(),
         resolved_model: None,
-        context_limit: ModelConfig::new_or_fail(model_name)
+        context_limit: crate::model::model_config_or_fail(model_name)
             .with_canonical_limits(provider_name)
             .context_limit(),
         input_token_cost: None,

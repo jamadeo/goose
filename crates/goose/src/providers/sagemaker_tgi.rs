@@ -19,9 +19,9 @@ use super::utils::RequestLog;
 use crate::conversation::message::{Message, MessageContent};
 use crate::session_context::SESSION_ID_HEADER;
 
-use crate::model::ModelConfig;
 use chrono::Utc;
 use futures::future::BoxFuture;
+use goose_types::ModelConfig;
 use rmcp::model::Role;
 
 const SAGEMAKER_TGI_PROVIDER_NAME: &str = "sagemaker_tgi";

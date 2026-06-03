@@ -1,5 +1,6 @@
 use crate::config::paths::Paths;
 use crate::config::Config;
+use crate::model::GooseModelConfigExt;
 use crate::session_context::SESSION_ID_HEADER;
 use anyhow::Result;
 use async_stream::try_stream;
@@ -29,8 +30,8 @@ use super::openai_compatible::handle_status;
 use super::retry::ProviderRetry;
 use super::utils::RequestLog;
 use crate::conversation::message::Message;
-use crate::model::ModelConfig;
 use futures::future::BoxFuture;
+use goose_types::ModelConfig;
 use rmcp::model::Tool;
 
 const KIMI_CODE_PROVIDER_NAME: &str = "kimi_code";
@@ -504,7 +505,7 @@ mod tests {
             device_id: device_id.to_string(),
             auth_host: server_uri.to_string(),
             api_base: server_uri.to_string(),
-            model: ModelConfig::new(KIMI_CODE_DEFAULT_MODEL).unwrap(),
+            model: crate::model::model_config_from_goose_config(KIMI_CODE_DEFAULT_MODEL).unwrap(),
             name: KIMI_CODE_PROVIDER_NAME.to_string(),
         }
     }

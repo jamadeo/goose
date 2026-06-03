@@ -1,6 +1,6 @@
 use crate::conversation::message::{Message, MessageContent, ProviderMetadata};
 use crate::mcp_utils::extract_text_from_resource;
-use crate::model::ModelConfig;
+use crate::model::GooseModelConfigExt;
 use crate::providers::base::{split_think_blocks, ProviderUsage, ThinkFilter, Usage};
 use crate::providers::errors::ProviderError;
 use crate::providers::utils::{
@@ -12,6 +12,7 @@ use anyhow::{anyhow, Error};
 use async_stream::try_stream;
 use chrono;
 use futures::Stream;
+use goose_types::ModelConfig;
 use rmcp::model::{
     object, AnnotateAble, CallToolRequestParams, Content, ErrorCode, ErrorData, RawContent, Role,
     Tool,

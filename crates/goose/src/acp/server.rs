@@ -14,6 +14,7 @@ use crate::config::permission::PermissionManager;
 use crate::config::{Config, GooseMode};
 use crate::conversation::message::{ActionRequiredData, Message, MessageContent, ToolRequest};
 use crate::mcp_utils::ToolResult;
+use crate::model::GooseModelConfigExt;
 use crate::permission::permission_confirmation::PrincipalType;
 use crate::permission::{Permission, PermissionConfirmation};
 use crate::providers::base::Provider;
@@ -87,7 +88,7 @@ mod tools;
 pub type AcpProviderFactory = Arc<
     dyn Fn(
             String,
-            crate::model::ModelConfig,
+            goose_types::ModelConfig,
             Vec<ExtensionConfig>,
             Option<PathBuf>,
         ) -> BoxFuture<'static, Result<Arc<dyn Provider>>>
@@ -221,7 +222,7 @@ struct AgentSetupRequest {
     mcp_servers: Vec<McpServer>,
     /// Pre-resolved provider name + model config (from config, no network).
     /// When present the spawn skips re-deriving these from config.
-    resolved_provider: Option<(String, crate::model::ModelConfig)>,
+    resolved_provider: Option<(String, goose_types::ModelConfig)>,
     /// Pre-instantiated provider reused from synchronous session initialization.
     prebuilt_provider: Option<Arc<dyn Provider>>,
 }
@@ -1006,7 +1007,7 @@ fn session_provider_selection(session: &Session) -> &str {
 async fn resolve_provider_and_model_from_config(
     config: &Config,
     goose_session: &Session,
-) -> Result<(String, crate::model::ModelConfig), String> {
+) -> Result<(String, goose_types::ModelConfig), String> {
     let global_provider = config.get_goose_provider().ok();
     let provider_override = goose_session
         .provider_name
@@ -1025,13 +1026,13 @@ async fn resolve_provider_and_model_from_config(
                 .await
                 .map_err(|e| e.to_string())?;
             let default_model = &entry.metadata().default_model;
-            crate::model::ModelConfig::new(default_model)
+            crate::model::model_config_from_goose_config(default_model)
                 .map_err(|e| e.to_string())?
                 .with_canonical_limits(&provider_name)
         }
         None => {
             let model_id = config.get_goose_model().map_err(|e| e.to_string())?;
-            crate::model::ModelConfig::new(&model_id)
+            crate::model::model_config_from_goose_config(&model_id)
                 .map_err(|e| e.to_string())?
                 .with_canonical_limits(&provider_name)
         }
@@ -1040,10 +1041,10 @@ async fn resolve_provider_and_model_from_config(
 }
 
 fn with_preserved_session_request_params(
-    mut model_config: crate::model::ModelConfig,
-    current_model_config: Option<&crate::model::ModelConfig>,
+    mut model_config: goose_types::ModelConfig,
+    current_model_config: Option<&goose_types::ModelConfig>,
     request_params: Option<HashMap<String, serde_json::Value>>,
-) -> crate::model::ModelConfig {
+) -> goose_types::ModelConfig {
     let has_model_effort = model_config
         .request_params
         .as_ref()
@@ -1072,7 +1073,7 @@ fn with_preserved_session_request_params(
 async fn resolve_provider_and_model(
     config_dir: &std::path::Path,
     goose_session: &Session,
-) -> Result<(String, crate::model::ModelConfig), String> {
+) -> Result<(String, goose_types::ModelConfig), String> {
     let config =
         Config::new(config_dir.join(CONFIG_YAML_NAME), "goose").map_err(|e| e.to_string())?;
     resolve_provider_and_model_from_config(&config, goose_session).await
@@ -1267,7 +1268,7 @@ impl GooseAcpAgent {
     async fn create_provider(
         &self,
         provider_name: &str,
-        model_config: crate::model::ModelConfig,
+        model_config: goose_types::ModelConfig,
         extensions: Vec<ExtensionConfig>,
         working_dir: Option<PathBuf>,
     ) -> Result<Arc<dyn Provider>> {
@@ -1282,7 +1283,7 @@ impl GooseAcpAgent {
 
     async fn prepare_session_init_config(
         &self,
-        resolved: &Result<(String, crate::model::ModelConfig), String>,
+        resolved: &Result<(String, goose_types::ModelConfig), String>,
         mode_state: &SessionModeState,
         goose_session: &Session,
     ) -> (
@@ -3278,7 +3279,7 @@ impl GooseAcpAgent {
         let current_model_config = current_provider.get_model_config();
         let extensions =
             EnabledExtensionsState::for_session(&self.session_manager, session_id, &config).await;
-        let model_config = crate::model::ModelConfig::new(model_id)
+        let model_config = crate::model::model_config_from_goose_config(model_id)
             .invalid_params_err_ctx("Invalid model config")?
             .with_canonical_limits(&provider_name);
         let model_config =
@@ -3413,7 +3414,7 @@ impl GooseAcpAgent {
             current_model
         };
         let model = model_name.unwrap_or(&default_model);
-        let mut model_config = crate::model::ModelConfig::new(model)
+        let mut model_config = crate::model::model_config_from_goose_config(model)
             .invalid_params_err_ctx("Invalid model config")?
             .with_canonical_limits(&resolved_provider_name)
             .with_context_limit(context_limit);

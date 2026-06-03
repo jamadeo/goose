@@ -1,9 +1,10 @@
 use super::base::{ConfigKey, ModelInfo, Provider, ProviderDef, ProviderMetadata, ProviderType};
 use super::inventory::InventoryIdentityInput;
 use crate::config::{DeclarativeProviderConfig, ExtensionConfig};
-use crate::model::ModelConfig;
+use crate::model::GooseModelConfigExt;
 use anyhow::Result;
 use futures::future::BoxFuture;
+use goose_types::ModelConfig;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -79,7 +80,9 @@ impl ProviderEntry {
         extensions: Vec<ExtensionConfig>,
     ) -> Result<Arc<dyn Provider>> {
         let default_model = &self.metadata.default_model;
-        let model_config = self.normalize_model_config(ModelConfig::new(default_model.as_str())?);
+        let model_config = self.normalize_model_config(
+            crate::model::model_config_from_goose_config(default_model.as_str())?,
+        );
         (self.constructor)(model_config, extensions, None).await
     }
 

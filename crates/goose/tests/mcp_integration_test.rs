@@ -13,7 +13,7 @@ use tokio_util::sync::CancellationToken;
 use goose::agents::extension::{Envs, ExtensionConfig};
 use goose::agents::extension_manager::{ExtensionManager, ExtensionManagerCapabilities};
 use goose::agents::GoosePlatform;
-use goose::model::ModelConfig;
+use goose_types::ModelConfig;
 
 use test_case::test_case;
 
@@ -251,7 +251,7 @@ async fn test_replayed_session(
     };
 
     let provider = Arc::new(tokio::sync::Mutex::new(Some(Arc::new(MockProvider {
-        model_config: ModelConfig::new("test-model").unwrap(),
+        model_config: goose::model::model_config_from_goose_config("test-model").unwrap(),
     }) as Arc<dyn Provider>)));
     let temp_dir = tempfile::tempdir().unwrap();
     let session_manager = Arc::new(goose::session::SessionManager::new(

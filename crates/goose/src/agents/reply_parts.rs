@@ -629,11 +629,11 @@ mod tests {
     use super::*;
     use crate::config::GooseMode;
     use crate::conversation::message::Message;
-    use crate::model::ModelConfig;
     use crate::providers::base::{Provider, ProviderUsage, Usage};
     use crate::providers::errors::ProviderError;
     use crate::session::session_manager::SessionType;
     use async_trait::async_trait;
+    use goose_types::ModelConfig;
     use rmcp::object;
 
     #[derive(Clone)]
@@ -680,7 +680,7 @@ mod tests {
             )
             .await?;
 
-        let model_config = ModelConfig::new("test-model").unwrap();
+        let model_config = crate::model::model_config_from_goose_config("test-model").unwrap();
         let provider = std::sync::Arc::new(MockProvider { model_config });
         agent.update_provider(provider, &session.id).await?;
 

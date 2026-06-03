@@ -1,3 +1,4 @@
+use crate::model::GooseModelConfigExt;
 use anyhow::Result;
 use async_stream::try_stream;
 use async_trait::async_trait;
@@ -21,9 +22,9 @@ use super::openai_compatible::map_http_error_to_provider_error;
 use super::retry::ProviderRetry;
 use crate::config::declarative_providers::DeclarativeProviderConfig;
 use crate::conversation::message::Message;
-use crate::model::ModelConfig;
 use crate::providers::utils::RequestLog;
 use futures::future::BoxFuture;
+use goose_types::ModelConfig;
 use rmcp::model::Tool;
 
 const ANTHROPIC_PROVIDER_NAME: &str = "anthropic";
@@ -408,7 +409,7 @@ mod tests {
             .unwrap();
         AnthropicProvider {
             api_client,
-            model: ModelConfig::new_or_fail("claude-test"),
+            model: crate::model::model_config_or_fail("claude-test"),
             supports_streaming: true,
             name: "custom_anthropic".to_string(),
             custom_models,
@@ -467,10 +468,12 @@ mod tests {
     #[test]
     fn from_custom_config_rejects_static_only_without_models() {
         let config = base_declarative_config(vec![], Some(false));
-        let err =
-            AnthropicProvider::from_custom_config(ModelConfig::new_or_fail("claude-test"), config)
-                .err()
-                .expect("expected construction error for dynamic_models: false with empty models");
+        let err = AnthropicProvider::from_custom_config(
+            crate::model::model_config_or_fail("claude-test"),
+            config,
+        )
+        .err()
+        .expect("expected construction error for dynamic_models: false with empty models");
         let msg = err.to_string();
         assert!(
             msg.contains("dynamic_models: false"),

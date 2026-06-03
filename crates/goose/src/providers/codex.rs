@@ -1,3 +1,4 @@
+use crate::model::GooseModelConfigExt;
 use anyhow::Result;
 use async_trait::async_trait;
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
@@ -21,8 +22,8 @@ use crate::config::paths::Paths;
 use crate::config::search_path::SearchPaths;
 use crate::config::{Config, ExtensionConfig, GooseMode};
 use crate::conversation::message::{Message, MessageContent};
-use crate::model::ModelConfig;
 use crate::subprocess::configure_subprocess;
+use goose_types::ModelConfig;
 use rmcp::model::Role;
 use rmcp::model::Tool;
 
@@ -933,7 +934,7 @@ mod tests {
     fn test_parse_response_plain_text() {
         let provider = CodexProvider {
             command: PathBuf::from("codex"),
-            model: ModelConfig::new("gpt-5.2-codex").unwrap(),
+            model: crate::model::model_config_from_goose_config("gpt-5.2-codex").unwrap(),
             name: "codex".to_string(),
             reasoning_effort: Some("high".to_string()),
             skip_git_check: false,
@@ -954,7 +955,7 @@ mod tests {
     fn test_parse_response_json_events() {
         let provider = CodexProvider {
             command: PathBuf::from("codex"),
-            model: ModelConfig::new("gpt-5.2-codex").unwrap(),
+            model: crate::model::model_config_from_goose_config("gpt-5.2-codex").unwrap(),
             name: "codex".to_string(),
             reasoning_effort: Some("high".to_string()),
             skip_git_check: false,
@@ -988,7 +989,7 @@ mod tests {
     fn test_parse_response_empty() {
         let provider = CodexProvider {
             command: PathBuf::from("codex"),
-            model: ModelConfig::new("gpt-5.2-codex").unwrap(),
+            model: crate::model::model_config_from_goose_config("gpt-5.2-codex").unwrap(),
             name: "codex".to_string(),
             reasoning_effort: Some("high".to_string()),
             skip_git_check: false,
@@ -1037,7 +1038,7 @@ mod tests {
     fn test_parse_response_item_completed() {
         let provider = CodexProvider {
             command: PathBuf::from("codex"),
-            model: ModelConfig::new("gpt-5.2-codex").unwrap(),
+            model: crate::model::model_config_from_goose_config("gpt-5.2-codex").unwrap(),
             name: "codex".to_string(),
             reasoning_effort: Some("high".to_string()),
             skip_git_check: false,
@@ -1063,7 +1064,7 @@ mod tests {
     fn test_parse_response_turn_completed_usage() {
         let provider = CodexProvider {
             command: PathBuf::from("codex"),
-            model: ModelConfig::new("gpt-5.2-codex").unwrap(),
+            model: crate::model::model_config_from_goose_config("gpt-5.2-codex").unwrap(),
             name: "codex".to_string(),
             reasoning_effort: Some("high".to_string()),
             skip_git_check: false,
@@ -1136,7 +1137,7 @@ mod tests {
     fn test_parse_response_error_event(lines: &[&str], expected: ProviderError) {
         let provider = CodexProvider {
             command: PathBuf::from("codex"),
-            model: ModelConfig::new("gpt-5.2-codex").unwrap(),
+            model: crate::model::model_config_from_goose_config("gpt-5.2-codex").unwrap(),
             name: "codex".to_string(),
             reasoning_effort: Some("high".to_string()),
             skip_git_check: false,
@@ -1153,7 +1154,7 @@ mod tests {
     fn test_parse_response_skips_reasoning() {
         let provider = CodexProvider {
             command: PathBuf::from("codex"),
-            model: ModelConfig::new("gpt-5.2-codex").unwrap(),
+            model: crate::model::model_config_from_goose_config("gpt-5.2-codex").unwrap(),
             name: "codex".to_string(),
             reasoning_effort: Some("high".to_string()),
             skip_git_check: false,
@@ -1280,7 +1281,7 @@ mod tests {
     fn test_parse_response_multiple_agent_messages() {
         let provider = CodexProvider {
             command: PathBuf::from("codex"),
-            model: ModelConfig::new("gpt-5.2-codex").unwrap(),
+            model: crate::model::model_config_from_goose_config("gpt-5.2-codex").unwrap(),
             name: "codex".to_string(),
             reasoning_effort: Some("high".to_string()),
             skip_git_check: false,

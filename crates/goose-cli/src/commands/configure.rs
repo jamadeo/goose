@@ -19,7 +19,7 @@ use goose::config::{
     configure_tetrate, Config, ConfigError, ExperimentManager, ExtensionEntry, GooseMode,
     PermissionManager,
 };
-use goose::model::ModelConfig;
+use goose::model::GooseModelConfigExt;
 #[cfg(feature = "telemetry")]
 use goose::posthog::{get_telemetry_choice, TELEMETRY_ENABLED_KEY};
 use goose::providers::base::ConfigKey;
@@ -339,7 +339,8 @@ async fn handle_oauth_configuration(provider_name: &str, key_name: &str) -> anyh
     ));
 
     // Create a temporary provider instance to handle OAuth
-    let temp_model = ModelConfig::new("temp")?.with_canonical_limits(provider_name);
+    let temp_model =
+        goose::model::model_config_from_goose_config("temp")?.with_canonical_limits(provider_name);
     match create(provider_name, temp_model, Vec::new()).await {
         Ok(provider) => match provider.configure_oauth().await {
             Ok(_) => {
@@ -737,7 +738,8 @@ pub async fn configure_provider_dialog() -> anyhow::Result<bool> {
     let spin = spinner();
     spin.start("Attempting to fetch supported models...");
     let temp_model_config =
-        ModelConfig::new(&provider_meta.default_model)?.with_canonical_limits(provider_name);
+        goose::model::model_config_from_goose_config(&provider_meta.default_model)?
+            .with_canonical_limits(provider_name);
     let temp_provider = create(provider_name, temp_model_config, Vec::new()).await?;
     let models_res = retry_operation(&RetryConfig::default(), || async {
         temp_provider.fetch_recommended_models().await
@@ -765,7 +767,7 @@ pub async fn configure_provider_dialog() -> anyhow::Result<bool> {
     {
         let supports_thinking = match temp_provider.fetch_model_info(&model).await {
             Ok(model_info) => model_info.reasoning,
-            Err(_) => goose::model::ModelConfig::new(&model)
+            Err(_) => goose::model::model_config_from_goose_config(&model)
                 .map(|c| c.is_reasoning_model())
                 .unwrap_or(false),
         };
@@ -1551,7 +1553,8 @@ pub async fn configure_tool_permissions_dialog() -> anyhow::Result<()> {
     let model: String = config
         .get_goose_model()
         .expect("No model configured. Please set model first");
-    let model_config = ModelConfig::new(&model)?.with_canonical_limits(&provider_name);
+    let model_config =
+        goose::model::model_config_from_goose_config(&model)?.with_canonical_limits(&provider_name);
 
     let agent = Agent::new();
 
@@ -1771,7 +1774,7 @@ pub async fn handle_openrouter_auth() -> anyhow::Result<()> {
     // Test configuration - get the model that was configured
     println!("\nTesting configuration...");
     let configured_model: String = config.get_goose_model()?;
-    let model_config = match goose::model::ModelConfig::new(&configured_model) {
+    let model_config = match goose::model::model_config_from_goose_config(&configured_model) {
         Ok(config) => config.with_canonical_limits("openrouter"),
         Err(e) => {
             eprintln!("⚠️  Invalid model configuration: {}", e);
@@ -1852,7 +1855,7 @@ pub async fn handle_tetrate_auth() -> anyhow::Result<()> {
     // Test configuration
     println!("\nTesting configuration...");
     let configured_model: String = config.get_goose_model()?;
-    let model_config = match goose::model::ModelConfig::new(&configured_model) {
+    let model_config = match goose::model::model_config_from_goose_config(&configured_model) {
         Ok(config) => config.with_canonical_limits("tetrate"),
         Err(e) => {
             eprintln!("⚠️  Invalid model configuration: {}", e);

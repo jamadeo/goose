@@ -18,15 +18,16 @@ use super::retry::ProviderRetry;
 use super::utils::ImageFormat;
 use crate::config::declarative_providers::DeclarativeProviderConfig;
 use crate::conversation::message::Message;
+use crate::model::GooseModelConfigExt;
 use anyhow::Result;
 use async_trait::async_trait;
 use futures::future::BoxFuture;
 use reqwest::StatusCode;
 use std::collections::HashMap;
 
-use crate::model::ModelConfig;
 use crate::providers::base::MessageStream;
 use crate::providers::utils::RequestLog;
+use goose_types::ModelConfig;
 use rmcp::model::Tool;
 
 const OPEN_AI_PROVIDER_NAME: &str = "openai";
@@ -969,7 +970,7 @@ mod tests {
             base_path: "v1/chat/completions".to_string(),
             organization: None,
             project: None,
-            model: ModelConfig::new_or_fail("test-model"),
+            model: crate::model::model_config_or_fail("test-model"),
             custom_headers: None,
             supports_streaming: true,
             name: name.to_string(),
@@ -1268,7 +1269,7 @@ mod tests {
             base_path: "v1/chat/completions".to_string(),
             organization: None,
             project: None,
-            model: ModelConfig::new_or_fail("test-model"),
+            model: crate::model::model_config_or_fail("test-model"),
             custom_headers: None,
             supports_streaming: true,
             name: "custom_test".to_string(),
@@ -1329,11 +1330,11 @@ mod tests {
     #[test]
     fn from_custom_config_rejects_static_only_without_models() {
         let config = base_declarative_config(vec![], Some(false));
-        let err =
-            OpenAiProvider::from_custom_config(ModelConfig::new_or_fail("test-model"), config)
-                .expect_err(
-                    "expected construction error for dynamic_models: false with empty models",
-                );
+        let err = OpenAiProvider::from_custom_config(
+            crate::model::model_config_or_fail("test-model"),
+            config,
+        )
+        .expect_err("expected construction error for dynamic_models: false with empty models");
         let msg = err.to_string();
         assert!(
             msg.contains("dynamic_models: false"),

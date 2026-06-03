@@ -15,7 +15,7 @@ use super::openai_compatible::handle_response_openai_compat;
 use super::retry::ProviderRetry;
 use super::utils::{get_model, ImageFormat, RequestLog};
 use crate::conversation::message::Message;
-use crate::model::ModelConfig;
+use goose_types::ModelConfig;
 use rmcp::model::Tool;
 
 const LITELLM_PROVIDER_NAME: &str = "litellm";

@@ -559,9 +559,9 @@ mod tests {
         use rmcp::model::Tool;
 
         use crate::conversation::message::Message;
-        use crate::model::ModelConfig;
         use crate::providers::base::{MessageStream, Provider, ProviderUsage, Usage};
         use crate::providers::errors::ProviderError;
+        use goose_types::ModelConfig;
 
         struct FailingProvider;
 
@@ -572,7 +572,7 @@ mod tests {
             }
 
             fn get_model_config(&self) -> ModelConfig {
-                ModelConfig::new_or_fail("test-model")
+                crate::model::model_config_or_fail("test-model")
             }
 
             async fn stream(

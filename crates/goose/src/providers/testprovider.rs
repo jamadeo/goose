@@ -12,9 +12,9 @@ use super::base::stream_from_single_message;
 use super::base::{MessageStream, Provider, ProviderDef, ProviderMetadata, ProviderUsage};
 use super::errors::ProviderError;
 use crate::conversation::message::{Message, ToolResponse};
-use crate::model::ModelConfig;
 use crate::utils::bytes_to_hex;
 use futures::future::BoxFuture;
+use goose_types::ModelConfig;
 use rmcp::model::{CallToolResult, Tool};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -217,7 +217,7 @@ impl Provider for TestProvider {
     }
 
     fn get_model_config(&self) -> ModelConfig {
-        ModelConfig::new_or_fail("test-model")
+        crate::model::model_config_or_fail("test-model")
     }
 }
 
@@ -279,7 +279,7 @@ mod tests {
         );
 
         let mock = Arc::new(MockProvider {
-            model_config: ModelConfig::new_or_fail("mock-model"),
+            model_config: crate::model::model_config_or_fail("mock-model"),
             response: "Hello, world!".to_string(),
         });
 

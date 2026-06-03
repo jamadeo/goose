@@ -6,7 +6,6 @@ use super::base::{
 use super::errors::ProviderError;
 use super::retry::{ProviderRetry, RetryConfig};
 use crate::conversation::message::Message;
-use crate::model::ModelConfig;
 use crate::providers::utils::RequestLog;
 use anyhow::Result;
 use async_trait::async_trait;
@@ -14,6 +13,7 @@ use aws_sdk_bedrockruntime::config::ProvideCredentials;
 use aws_sdk_bedrockruntime::operation::converse::ConverseError;
 use aws_sdk_bedrockruntime::{types as bedrock, Client};
 use futures::future::BoxFuture;
+use goose_types::ModelConfig;
 use reqwest::header::HeaderValue;
 use rmcp::model::Tool;
 use serde_json::Value;

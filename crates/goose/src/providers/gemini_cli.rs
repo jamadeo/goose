@@ -18,11 +18,11 @@ use crate::config::base::GeminiCliCommand;
 use crate::config::search_path::SearchPaths;
 use crate::config::Config;
 use crate::conversation::message::{Message, MessageContent};
-use crate::model::ModelConfig;
 use crate::providers::base::ConfigKey;
 use crate::subprocess::configure_subprocess;
 use async_stream::try_stream;
 use futures::future::BoxFuture;
+use goose_types::ModelConfig;
 use rmcp::model::Role;
 use rmcp::model::Tool;
 
@@ -327,7 +327,7 @@ mod tests {
     fn make_provider() -> GeminiCliProvider {
         GeminiCliProvider {
             command: PathBuf::from("gemini"),
-            model: ModelConfig::new("gemini-2.5-pro").unwrap(),
+            model: crate::model::model_config_from_goose_config("gemini-2.5-pro").unwrap(),
             name: "gemini-cli".to_string(),
             cli_session_id: Arc::new(OnceLock::new()),
         }

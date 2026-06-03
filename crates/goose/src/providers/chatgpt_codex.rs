@@ -1,6 +1,6 @@
 use crate::config::paths::Paths;
 use crate::conversation::message::{Message, MessageContent};
-use crate::model::ModelConfig;
+use crate::model::GooseModelConfigExt;
 use crate::providers::api_client::AuthProvider;
 use crate::providers::base::{ConfigKey, MessageStream, Provider, ProviderDef, ProviderMetadata};
 use crate::providers::errors::ProviderError;
@@ -16,6 +16,7 @@ use base64::Engine;
 use chrono::{DateTime, Utc};
 use futures::future::BoxFuture;
 use futures::{StreamExt, TryStreamExt};
+use goose_types::ModelConfig;
 use jsonwebtoken::jwk::JwkSet;
 use jsonwebtoken::{decode, decode_header, DecodingKey, Validation};
 use reqwest::header::{HeaderName, HeaderValue};
@@ -1210,7 +1211,7 @@ mod tests {
     fn test_create_codex_request_reasoning_effort_from_unified_thinking() {
         let mut params = std::collections::HashMap::new();
         params.insert("thinking_effort".to_string(), json!("max"));
-        let mut config = ModelConfig::new("gpt-5.3-codex").unwrap();
+        let mut config = crate::model::model_config_from_goose_config("gpt-5.3-codex").unwrap();
         config.request_params = Some(params);
 
         let payload = create_codex_request(&config, "sys", &[], &[]).unwrap();
@@ -1222,7 +1223,7 @@ mod tests {
     fn test_create_codex_request_caps_unified_thinking_to_supported_level() {
         let mut params = std::collections::HashMap::new();
         params.insert("thinking_effort".to_string(), json!("max"));
-        let mut config = ModelConfig::new("unknown-model").unwrap();
+        let mut config = crate::model::model_config_from_goose_config("unknown-model").unwrap();
         config.request_params = Some(params);
 
         let payload = create_codex_request(&config, "sys", &[], &[]).unwrap();
@@ -1234,7 +1235,7 @@ mod tests {
     fn test_create_codex_request_off_omits_reasoning_for_codex_models() {
         let mut params = std::collections::HashMap::new();
         params.insert("thinking_effort".to_string(), json!("off"));
-        let mut config = ModelConfig::new("gpt-5.2-codex").unwrap();
+        let mut config = crate::model::model_config_from_goose_config("gpt-5.2-codex").unwrap();
         config.request_params = Some(params);
 
         let payload = create_codex_request(&config, "sys", &[], &[]).unwrap();
@@ -1402,7 +1403,7 @@ mod tests {
 
     #[test]
     fn test_gpt53_preamble_injected() {
-        let model = ModelConfig::new("gpt-5.3-codex").unwrap();
+        let model = crate::model::model_config_from_goose_config("gpt-5.3-codex").unwrap();
         let payload = create_codex_request(&model, "system prompt", &[], &[]).unwrap();
         let instructions = payload["instructions"].as_str().unwrap();
         assert!(instructions.contains(GPT_53_CODEX_TOOL_PREAMBLE));
@@ -1411,7 +1412,7 @@ mod tests {
 
     #[test]
     fn test_other_models_no_preamble() {
-        let model = ModelConfig::new("gpt-5.4").unwrap();
+        let model = crate::model::model_config_from_goose_config("gpt-5.4").unwrap();
         let payload = create_codex_request(&model, "system prompt", &[], &[]).unwrap();
         let instructions = payload["instructions"].as_str().unwrap();
         assert_eq!(instructions, "system prompt");

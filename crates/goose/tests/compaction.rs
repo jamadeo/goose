@@ -5,7 +5,6 @@ use goose::agents::{Agent, AgentEvent, SessionConfig};
 use goose::config::GooseMode;
 use goose::conversation::message::{Message, MessageContent};
 use goose::conversation::Conversation;
-use goose::model::ModelConfig;
 use goose::providers::base::{
     stream_from_single_message, MessageStream, Provider, ProviderDef, ProviderMetadata,
     ProviderUsage, Usage,
@@ -13,6 +12,7 @@ use goose::providers::base::{
 use goose::providers::errors::ProviderError;
 use goose::session::session_manager::SessionType;
 use goose::session::Session;
+use goose_types::ModelConfig;
 use rmcp::model::Tool;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -171,7 +171,7 @@ impl Provider for MockCompactionProvider {
     }
 
     fn get_model_config(&self) -> ModelConfig {
-        ModelConfig::new("mock-model").unwrap()
+        goose::model::model_config_from_goose_config("mock-model").unwrap()
     }
 
     fn get_name(&self) -> &str {

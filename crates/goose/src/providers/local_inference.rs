@@ -7,7 +7,7 @@ mod tool_parsing;
 
 use crate::config::ExtensionConfig;
 use crate::conversation::message::{Message, MessageContent};
-use crate::model::ModelConfig;
+use crate::model::GooseModelConfigExt;
 use crate::providers::base::{
     MessageStream, Provider, ProviderDef, ProviderMetadata, ProviderUsage, Usage,
 };
@@ -18,6 +18,7 @@ use async_stream::try_stream;
 use async_trait::async_trait;
 use backend::{BackendLoadedModel, LocalInferenceBackend};
 use futures::future::BoxFuture;
+use goose_types::ModelConfig;
 use llamacpp::{LlamaCppBackend, LLAMACPP_BACKEND_ID};
 use local_model_registry::ChatTemplate;
 use rmcp::model::Tool;

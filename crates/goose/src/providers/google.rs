@@ -5,8 +5,8 @@ use super::openai_compatible::{handle_status, map_http_error_to_provider_error, 
 use super::retry::ProviderRetry;
 use super::utils::RequestLog;
 use crate::conversation::message::Message;
+use crate::model::GooseModelConfigExt;
 
-use crate::model::ModelConfig;
 use crate::providers::base::{ConfigKey, Provider, ProviderDef, ProviderMetadata};
 use crate::providers::formats::google::{create_request, response_to_streaming_message};
 use crate::providers::inventory::{config_secret_value, InventoryIdentityInput};
@@ -15,6 +15,7 @@ use async_stream::try_stream;
 use async_trait::async_trait;
 use futures::future::BoxFuture;
 use futures::TryStreamExt;
+use goose_types::ModelConfig;
 use rmcp::model::Tool;
 use serde_json::Value;
 use std::io;

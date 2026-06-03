@@ -15,8 +15,8 @@ use super::utils::{get_model, ImageFormat, RequestLog};
 use crate::config::ConfigError;
 use crate::conversation::message::Message;
 
-use crate::model::ModelConfig;
 use futures::future::BoxFuture;
+use goose_types::ModelConfig;
 use rmcp::model::Tool;
 
 const SNOWFLAKE_PROVIDER_NAME: &str = "snowflake";

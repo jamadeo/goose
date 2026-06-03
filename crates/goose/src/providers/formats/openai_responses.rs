@@ -1,6 +1,6 @@
 use crate::conversation::message::{Message, MessageContent};
 use crate::mcp_utils::extract_text_from_resource;
-use crate::model::ModelConfig;
+use crate::model::GooseModelConfigExt;
 use crate::providers::base::{ProviderUsage, Usage};
 use crate::providers::utils::{
     extract_reasoning_effort, is_openai_responses_model, openai_reasoning_effort_for_thinking,
@@ -9,6 +9,7 @@ use anyhow::{anyhow, Error};
 use async_stream::try_stream;
 use chrono;
 use futures::Stream;
+use goose_types::ModelConfig;
 use rmcp::model::{object, CallToolRequestParams, RawContent, Role, Tool};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -935,8 +936,8 @@ where
 mod tests {
     use super::*;
     use crate::conversation::message::MessageContent;
-    use crate::model::ModelConfig;
     use futures::StreamExt;
+    use goose_types::ModelConfig;
     use rmcp::model::CallToolRequestParams;
     use rmcp::object;
 
@@ -1329,7 +1330,7 @@ mod tests {
 
     #[test]
     fn test_responses_request_with_normalized_effort_suffix() {
-        let model_config = ModelConfig::new("o3-mini-high").unwrap();
+        let model_config = crate::model::model_config_from_goose_config("o3-mini-high").unwrap();
 
         let result = create_responses_request(&model_config, "You are helpful.", &[], &[]).unwrap();
 

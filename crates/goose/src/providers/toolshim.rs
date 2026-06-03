@@ -37,7 +37,7 @@ use super::ollama::OLLAMA_DEFAULT_PORT;
 use super::ollama::OLLAMA_HOST;
 use crate::conversation::message::{Message, MessageContent};
 use crate::conversation::Conversation;
-use crate::model::ModelConfig;
+use crate::model::GooseModelConfigExt;
 use crate::providers::base::DEFAULT_PROVIDER_TIMEOUT_SECS;
 use crate::providers::formats::openai::create_request;
 use anyhow::Result;
@@ -565,7 +565,7 @@ impl LocalInterpreter {
         &self,
         format_instruction: &str,
     ) -> Result<String, ProviderError> {
-        let model_config = ModelConfig::new(&self.model)
+        let model_config = crate::model::model_config_from_goose_config(&self.model)
             .map_err(|e| ProviderError::RequestFailed(format!("Model config error: {e}")))?
             .with_canonical_limits("local")
             .with_toolshim(false)
@@ -691,7 +691,7 @@ impl OllamaInterpreter {
         let user_message = Message::user().with_text(format_instruction);
         messages.push(user_message);
 
-        let model_config = ModelConfig::new(model)
+        let model_config = crate::model::model_config_from_goose_config(model)
             .map_err(|e| ProviderError::RequestFailed(format!("Model config error: {e}")))?
             .with_canonical_limits("ollama");
 

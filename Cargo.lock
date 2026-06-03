@@ -4772,7 +4772,9 @@ dependencies = [
 name = "goose-types"
 version = "1.37.0"
 dependencies = [
+ "regex",
  "serde",
+ "serde_json",
  "utoipa 4.2.3",
 ]
 

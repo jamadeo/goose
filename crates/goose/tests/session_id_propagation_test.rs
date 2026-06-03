@@ -1,5 +1,4 @@
 use goose::conversation::message::Message;
-use goose::model::ModelConfig;
 use goose::providers::api_client::{ApiClient, AuthMethod};
 use goose::providers::base::Provider;
 use goose::providers::openai::OpenAiProvider;
@@ -41,7 +40,7 @@ fn create_test_provider(mock_server_url: &str) -> Box<dyn Provider> {
         AuthMethod::BearerToken("test-key".to_string()),
     )
     .unwrap();
-    let model = ModelConfig::new_or_fail("gpt-5-nano");
+    let model = goose::model::model_config_or_fail("gpt-5-nano");
     Box::new(OpenAiProvider::new(api_client, model))
 }
 

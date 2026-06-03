@@ -12,7 +12,7 @@ use goose::config::paths::Paths;
 use goose::config::ExtensionEntry;
 use goose::config::{Config, ConfigError};
 use goose::custom_requests::SourceType;
-use goose::model::ModelConfig;
+use goose::model::GooseModelConfigExt;
 use goose::providers::base::{ModelInfo, ProviderMetadata, ProviderType};
 use goose::providers::catalog::{
     get_provider_template, get_providers_by_format, ProviderCatalogEntry, ProviderFormat,
@@ -441,7 +441,8 @@ pub async fn get_provider_models(
         )));
     }
 
-    let model_config = ModelConfig::new(&metadata.default_model)?.with_canonical_limits(&name);
+    let model_config = goose::model::model_config_from_goose_config(&metadata.default_model)?
+        .with_canonical_limits(&name);
     let provider = goose::providers::create(&name, model_config, Vec::new()).await?;
 
     let models_result = provider.fetch_recommended_model_info().await;
@@ -475,7 +476,8 @@ pub async fn resolve_provider_model_info(
         )));
     }
 
-    let model_config = ModelConfig::new(model)?.with_canonical_limits(name);
+    let model_config =
+        goose::model::model_config_from_goose_config(model)?.with_canonical_limits(name);
     let provider = goose::providers::create(name, model_config.clone(), Vec::new()).await?;
     match provider.fetch_model_info(model).await {
         Ok(info) => Ok(info),
@@ -625,9 +627,9 @@ pub async fn get_canonical_model_info(
         model: query.model.clone(),
         context_limit: canonical_model.limit.context,
         max_output_tokens: canonical_model.limit.output,
-        reasoning: canonical_model
-            .reasoning
-            .unwrap_or_else(|| ModelConfig::new_or_fail(&query.model).is_reasoning_model()),
+        reasoning: canonical_model.reasoning.unwrap_or_else(|| {
+            goose::model::model_config_or_fail(&query.model).is_reasoning_model()
+        }),
         // Costs are per million tokens - client handles division for display
         input_token_cost: canonical_model.cost.input,
         output_token_cost: canonical_model.cost.output,
@@ -923,7 +925,6 @@ pub async fn get_provider_catalog_template(
 pub async fn configure_provider_oauth(
     Path(provider_name): Path<String>,
 ) -> Result<Json<String>, ErrorResponse> {
-    use goose::model::ModelConfig;
     use goose::providers::create;
 
     if !is_valid_provider_name(&provider_name) {
@@ -933,7 +934,7 @@ pub async fn configure_provider_oauth(
         )));
     }
 
-    let temp_model = ModelConfig::new("temp")
+    let temp_model = goose::model::model_config_from_goose_config("temp")
         .map_err(|e| {
             ErrorResponse::bad_request(format!("Failed to create temporary model config: {}", e))
         })?

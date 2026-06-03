@@ -8,10 +8,10 @@ use common_tests::fixtures::{
     TestConnectionConfig,
 };
 use goose::acp::server::AcpProviderFactory;
-use goose::model::ModelConfig;
 use goose::providers::base::{MessageStream, Provider};
 use goose::providers::errors::ProviderError;
 use goose_test_support::{EnforceSessionId, IgnoreSessionId};
+use goose_types::ModelConfig;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 

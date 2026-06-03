@@ -342,13 +342,13 @@ mod tests {
         use goose::agents::SessionConfig;
         use goose::config::GooseMode;
         use goose::conversation::message::{Message, MessageContent};
-        use goose::model::ModelConfig;
         use goose::providers::base::{
             stream_from_single_message, MessageStream, Provider, ProviderDef, ProviderMetadata,
             ProviderUsage, Usage,
         };
         use goose::providers::errors::ProviderError;
         use goose::session::session_manager::SessionType;
+        use goose_types::ModelConfig;
         use rmcp::model::{CallToolRequestParams, Tool};
         use rmcp::object;
         use std::path::PathBuf;
@@ -409,7 +409,7 @@ mod tests {
             }
 
             fn get_model_config(&self) -> ModelConfig {
-                ModelConfig::new("mock-model").unwrap()
+                goose::model::model_config_from_goose_config("mock-model").unwrap()
             }
 
             fn get_name(&self) -> &str {
@@ -503,13 +503,13 @@ mod tests {
         use goose::config::base::Config;
         use goose::config::GooseMode;
         use goose::conversation::message::Message;
-        use goose::model::ModelConfig;
         use goose::providers::base::{
             stream_from_single_message, MessageStream, Provider, ProviderDef, ProviderMetadata,
             ProviderUsage, Usage,
         };
         use goose::providers::errors::ProviderError;
         use goose::session::session_manager::SessionType;
+        use goose_types::ModelConfig;
         use rmcp::model::{AnnotateAble, CallToolRequestParams, CallToolResult, RawContent, Tool};
         use std::path::PathBuf;
         use std::sync::atomic::{AtomicUsize, Ordering};
@@ -582,7 +582,7 @@ mod tests {
             }
 
             fn get_model_config(&self) -> ModelConfig {
-                ModelConfig::new("mock-model").unwrap()
+                goose::model::model_config_from_goose_config("mock-model").unwrap()
             }
 
             fn get_name(&self) -> &str {
@@ -856,13 +856,13 @@ mod tests {
         use goose::config::permission::PermissionManager;
         use goose::config::GooseMode;
         use goose::conversation::message::Message;
-        use goose::model::ModelConfig;
         use goose::providers::base::{
             MessageStream, Provider, ProviderDef, ProviderMetadata, ProviderUsage, Usage,
         };
         use goose::providers::errors::ProviderError;
         use goose::session::session_manager::SessionType;
         use goose::session::SessionManager;
+        use goose_types::ModelConfig;
         use rmcp::model::{CallToolRequestParams, Role, Tool};
         use rmcp::object;
         use std::path::PathBuf;
@@ -970,7 +970,7 @@ mod tests {
             }
 
             fn get_model_config(&self) -> ModelConfig {
-                ModelConfig::new("mock-model").unwrap()
+                goose::model::model_config_from_goose_config("mock-model").unwrap()
             }
 
             fn get_name(&self) -> &str {
@@ -1128,7 +1128,6 @@ mod tests {
         use goose::config::permission::PermissionManager;
         use goose::config::GooseMode;
         use goose::conversation::message::Message;
-        use goose::model::ModelConfig;
         use goose::providers::base::{
             stream_from_single_message, MessageStream, Provider, ProviderDef, ProviderMetadata,
             ProviderUsage, Usage,
@@ -1136,6 +1135,7 @@ mod tests {
         use goose::providers::errors::ProviderError;
         use goose::session::session_manager::SessionType;
         use goose::session::SessionManager;
+        use goose_types::ModelConfig;
         use rmcp::model::Tool;
         use std::path::PathBuf;
         use std::sync::atomic::{AtomicU32, Ordering};
@@ -1199,7 +1199,7 @@ mod tests {
             }
 
             fn get_model_config(&self) -> ModelConfig {
-                ModelConfig::new("mock-model").unwrap()
+                goose::model::model_config_from_goose_config("mock-model").unwrap()
             }
 
             fn get_name(&self) -> &str {
@@ -1396,13 +1396,13 @@ mod tests {
         use goose::config::permission::PermissionManager;
         use goose::config::GooseMode;
         use goose::conversation::message::Message;
-        use goose::model::ModelConfig;
         use goose::providers::base::{
             stream_from_single_message, MessageStream, Provider, ProviderUsage, Usage,
         };
         use goose::providers::errors::ProviderError;
         use goose::session::session_manager::SessionType;
         use goose::session::SessionManager;
+        use goose_types::ModelConfig;
         use rmcp::model::Tool;
         use std::path::PathBuf;
         use std::sync::Arc;
@@ -1436,7 +1436,7 @@ mod tests {
             }
 
             fn get_model_config(&self) -> ModelConfig {
-                ModelConfig::new("mock-model").unwrap()
+                goose::model::model_config_from_goose_config("mock-model").unwrap()
             }
 
             fn get_name(&self) -> &str {

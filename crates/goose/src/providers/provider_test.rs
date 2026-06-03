@@ -1,4 +1,5 @@
-use crate::{conversation::message::Message, model::ModelConfig, providers::create};
+use crate::model::GooseModelConfigExt;
+use crate::{conversation::message::Message, providers::create};
 use anyhow::Result;
 use futures::StreamExt;
 use rmcp::model::ToolAnnotations;
@@ -10,7 +11,7 @@ pub async fn test_provider_configuration(
     toolshim_enabled: bool,
     toolshim_model: Option<String>,
 ) -> Result<()> {
-    let model_config = ModelConfig::new(model)?
+    let model_config = crate::model::model_config_from_goose_config(model)?
         .with_canonical_limits(provider_name)
         .with_max_tokens(Some(50))
         .with_toolshim(toolshim_enabled)

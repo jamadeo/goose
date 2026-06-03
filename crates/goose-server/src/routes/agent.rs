@@ -13,13 +13,13 @@ use axum::{
 };
 use goose::agents::{Container, ExtensionLoadResult};
 use goose::goose_apps::{fetch_mcp_apps, GooseApp, McpAppCache};
+use goose::model::GooseModelConfigExt;
 
 use base64::Engine;
 use goose::agents::reply_parts::is_tool_visible_to_app;
 use goose::agents::ExtensionConfig;
 use goose::config::resolve_extensions_for_new_session;
 use goose::config::{Config, GooseMode};
-use goose::model::ModelConfig;
 use goose::providers::create;
 use goose::recipe::Recipe;
 use goose::recipe_deeplink;
@@ -297,7 +297,7 @@ async fn start_agent(
                 update = update.provider_name(provider);
 
                 if let Some(ref model) = settings.goose_model {
-                    if let Ok(model_config) = ModelConfig::new(model) {
+                    if let Ok(model_config) = goose::model::model_config_from_goose_config(model) {
                         update = update.model_config(model_config);
                     }
                 }
@@ -604,7 +604,7 @@ async fn update_agent_provider(
         }
     };
 
-    let mut model_config = ModelConfig::new(&model)
+    let mut model_config = goose::model::model_config_from_goose_config(&model)
         .map_err(|e| {
             (
                 StatusCode::BAD_REQUEST,

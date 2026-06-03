@@ -6,12 +6,12 @@ use common_tests::fixtures::server::AcpServerConnection;
 use common_tests::fixtures::{run_test, send_custom, Connection, TestConnectionConfig};
 use goose::config::paths::Paths;
 use goose::config::{Config, ConfigError};
-use goose::model::ModelConfig;
 use goose::providers::base::{MessageStream, Provider};
 use goose::providers::errors::ProviderError;
 use goose::providers::inventory::ProviderInventoryService;
 use goose::session::session_manager::SessionStorage;
 use goose_test_support::EnforceSessionId;
+use goose_types::ModelConfig;
 use serial_test::serial;
 use std::sync::Arc;
 

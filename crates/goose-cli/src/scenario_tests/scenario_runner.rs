@@ -1,5 +1,6 @@
 use dotenvy::dotenv;
 use goose::conversation::Conversation;
+use goose::model::GooseModelConfigExt;
 
 use crate::scenario_tests::message_generator::MessageGenerator;
 use crate::scenario_tests::mock_client::weather_client;
@@ -9,10 +10,10 @@ use anyhow::Result;
 use goose::agents::{Agent, AgentConfig, GoosePlatform};
 use goose::config::permission::PermissionManager;
 use goose::config::GooseMode;
-use goose::model::ModelConfig;
 use goose::providers::{create, testprovider::TestProvider};
 use goose::session::session_manager::SessionType;
 use goose::session::SessionManager;
+use goose_types::ModelConfig;
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -188,7 +189,8 @@ where
 
         let inner_provider = create(
             &factory_name,
-            ModelConfig::new(config.model_name)?.with_canonical_limits(&factory_name),
+            goose::model::model_config_from_goose_config(config.model_name)?
+                .with_canonical_limits(&factory_name),
             Vec::new(),
         )
         .await?;

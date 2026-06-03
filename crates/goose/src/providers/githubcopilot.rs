@@ -35,9 +35,9 @@ use super::utils::{get_model, is_openai_responses_model, ImageFormat, RequestLog
 use crate::config::{Config, ConfigError};
 use crate::conversation::message::{Message, MessageContent};
 
-use crate::model::ModelConfig;
 use crate::providers::base::{ConfigKey, MessageStream};
 use futures::future::BoxFuture;
+use goose_types::ModelConfig;
 use rmcp::model::{RawContent, Tool};
 use std::ops::Deref;
 

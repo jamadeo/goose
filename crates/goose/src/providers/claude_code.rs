@@ -26,10 +26,10 @@ use crate::config::paths::Paths;
 use crate::config::search_path::SearchPaths;
 use crate::config::{Config, ExtensionConfig, GooseMode};
 use crate::conversation::message::{Message, MessageContent};
-use crate::model::ModelConfig;
 use crate::permission::permission_confirmation::PrincipalType;
 use crate::permission::{Permission, PermissionConfirmation};
 use crate::subprocess::configure_subprocess;
+use goose_types::ModelConfig;
 
 use super::cli_common::{error_from_event, extract_usage_tokens};
 
@@ -938,6 +938,7 @@ impl Provider for ClaudeCodeProvider {
 mod tests {
     use super::*;
     use crate::agents::extension::Envs;
+    use crate::model::GooseModelConfigExt;
     use chrono::Utc;
     use goose_test_support::session::TEST_SESSION_ID;
     use serde_json::json;
@@ -1212,7 +1213,7 @@ mod tests {
     fn make_provider() -> ClaudeCodeProvider {
         ClaudeCodeProvider {
             command: PathBuf::from("claude"),
-            model: ModelConfig::new(CLAUDE_CODE_DEFAULT_MODEL)
+            model: crate::model::model_config_from_goose_config(CLAUDE_CODE_DEFAULT_MODEL)
                 .unwrap()
                 .with_canonical_limits(CLAUDE_CODE_PROVIDER_NAME),
             name: "claude-code".to_string(),

@@ -10,13 +10,14 @@ use super::retry::{ProviderRetry, RetryConfig};
 use super::utils::{ImageFormat, RequestLog};
 use crate::config::declarative_providers::DeclarativeProviderConfig;
 use crate::conversation::message::Message;
-use crate::model::ModelConfig;
+use crate::model::GooseModelConfigExt;
 use crate::providers::formats::ollama::{create_request, response_to_streaming_message_ollama};
 use anyhow::{Error, Result};
 use async_stream::try_stream;
 use async_trait::async_trait;
 use futures::future::BoxFuture;
 use futures::TryStreamExt;
+use goose_types::ModelConfig;
 use reqwest::Response;
 use rmcp::model::Tool;
 use serde_json::{json, Value};
@@ -526,7 +527,7 @@ mod tests {
     #[test]
     fn test_apply_ollama_options_uses_input_limit() {
         let _guard = env_lock::lock_env([("GOOSE_INPUT_LIMIT", Some("8192"))]);
-        let model_config = ModelConfig::new("qwen3")
+        let model_config = crate::model::model_config_from_goose_config("qwen3")
             .unwrap()
             .with_context_limit(Some(16_000));
         let mut payload = json!({});
@@ -537,7 +538,7 @@ mod tests {
     #[test]
     fn test_apply_ollama_options_falls_back_to_context_limit() {
         let _guard = env_lock::lock_env([("GOOSE_INPUT_LIMIT", None::<&str>)]);
-        let model_config = ModelConfig::new("qwen3")
+        let model_config = crate::model::model_config_from_goose_config("qwen3")
             .unwrap()
             .with_context_limit(Some(12_000));
         let mut payload = json!({});
@@ -548,7 +549,7 @@ mod tests {
     #[test]
     fn test_apply_ollama_options_skips_when_no_limit() {
         let _guard = env_lock::lock_env([("GOOSE_INPUT_LIMIT", None::<&str>)]);
-        let mut model_config = ModelConfig::new("qwen3").unwrap();
+        let mut model_config = crate::model::model_config_from_goose_config("qwen3").unwrap();
         model_config.context_limit = None;
         let mut payload = json!({});
         apply_ollama_options(&mut payload, &model_config);
@@ -560,7 +561,7 @@ mod tests {
         use crate::providers::formats::ollama::create_request;
         use crate::providers::utils::ImageFormat;
 
-        let model_config = ModelConfig::new("llama3.1")
+        let model_config = crate::model::model_config_from_goose_config("llama3.1")
             .unwrap()
             .with_max_tokens(Some(4096));
         let messages = vec![crate::conversation::message::Message::user().with_text("hi")];
@@ -594,7 +595,7 @@ mod tests {
             ("GOOSE_INPUT_LIMIT", None::<&str>),
             ("OLLAMA_STREAM_USAGE", None::<&str>),
         ]);
-        let model_config = ModelConfig::new("llama3.1")
+        let model_config = crate::model::model_config_from_goose_config("llama3.1")
             .unwrap()
             .with_max_tokens(Some(4096));
         let messages = vec![crate::conversation::message::Message::user().with_text("hi")];
@@ -639,7 +640,7 @@ mod tests {
             ("GOOSE_INPUT_LIMIT", None::<&str>),
             ("OLLAMA_STREAM_USAGE", Some("false")),
         ]);
-        let model_config = ModelConfig::new("llama3.1")
+        let model_config = crate::model::model_config_from_goose_config("llama3.1")
             .unwrap()
             .with_max_tokens(Some(4096));
         let messages = vec![crate::conversation::message::Message::user().with_text("hi")];

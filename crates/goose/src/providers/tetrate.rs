@@ -13,8 +13,8 @@ use anyhow::Result;
 use async_trait::async_trait;
 use futures::future::BoxFuture;
 
-use crate::model::ModelConfig;
 use crate::providers::formats::openai::create_request;
+use goose_types::ModelConfig;
 use rmcp::model::Tool;
 use serde_json::Value;
 

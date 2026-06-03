@@ -1,10 +1,10 @@
+use crate::model::GooseModelConfigExt;
 use std::sync::Arc;
 
 use crate::agents::platform_extensions::developer;
 use crate::agents::ExtensionConfig;
 use crate::config::Config;
 use crate::conversation::message::Message;
-use crate::model::ModelConfig;
 use crate::providers::base::Provider;
 use crate::providers::{self, errors::ProviderError};
 use crate::session::{
@@ -167,7 +167,7 @@ async fn try_create_and_test(
     provider_name: &str,
     model_name: &str,
 ) -> Result<Arc<dyn Provider>, ProviderError> {
-    let model_config = ModelConfig::new(model_name)
+    let model_config = crate::model::model_config_from_goose_config(model_name)
         .map_err(|e| ProviderError::ExecutionError(e.to_string()))?
         .with_canonical_limits(provider_name);
 

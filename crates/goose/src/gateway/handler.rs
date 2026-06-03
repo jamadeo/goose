@@ -11,7 +11,6 @@ use crate::config::paths::Paths;
 use crate::config::Config;
 use crate::conversation::message::{Message, MessageContent};
 use crate::execution::manager::AgentManager;
-use crate::model::ModelConfig;
 use crate::session::SessionType;
 use crate::session::{EnabledExtensionsState, ExtensionState, Session};
 
@@ -168,7 +167,7 @@ impl GatewayHandler {
             update = update.provider_name(provider);
         }
         if let Ok(model_name) = config.get_goose_model() {
-            if let Ok(model_config) = ModelConfig::new(&model_name) {
+            if let Ok(model_config) = crate::model::model_config_from_goose_config(&model_name) {
                 update = update.model_config(model_config);
             }
         }
@@ -254,7 +253,7 @@ impl GatewayHandler {
             update = update.provider_name(provider);
         }
         if let Some(ref model_name) = current_model_name {
-            if let Ok(model_config) = ModelConfig::new(model_name) {
+            if let Ok(model_config) = crate::model::model_config_from_goose_config(model_name) {
                 update = update.model_config(model_config);
             }
         }

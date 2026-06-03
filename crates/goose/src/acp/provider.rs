@@ -33,12 +33,12 @@ use crate::acp::{map_permission_response, PermissionDecision};
 use crate::config::{ExtensionConfig, GooseMode};
 use crate::context_mgmt::format_message_for_compacting;
 use crate::conversation::message::{Message, MessageContent, TOOL_META_EXTERNAL_DISPATCH_KEY};
-use crate::model::ModelConfig;
 use crate::permission::permission_confirmation::PrincipalType;
 use crate::permission::{Permission, PermissionConfirmation};
 use crate::providers::base::{MessageStream, PermissionRouting, Provider, ProviderUsage, Usage};
 use crate::providers::errors::ProviderError;
 use crate::subprocess::configure_subprocess;
+use goose_types::ModelConfig;
 
 /// Sentinel: resolved to the actual model name during connect().
 pub const ACP_CURRENT_MODEL: &str = "current";

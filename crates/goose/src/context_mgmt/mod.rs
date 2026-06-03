@@ -561,11 +561,9 @@ pub fn maybe_summarize_tool_pairs(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{
-        model::ModelConfig,
-        providers::{base::Usage, errors::ProviderError},
-    };
+    use crate::providers::{base::Usage, errors::ProviderError};
     use async_trait::async_trait;
+    use goose_types::ModelConfig;
     use rmcp::model::{AnnotateAble, CallToolRequestParams, RawContent, Tool};
 
     fn create_tool_pair(

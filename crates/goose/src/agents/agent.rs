@@ -1,3 +1,4 @@
+use crate::model::GooseModelConfigExt;
 use std::collections::HashMap;
 use std::fmt;
 use std::future::Future;
@@ -2509,7 +2510,7 @@ impl Agent {
                     .get_goose_model()
                     .ok()
                     .ok_or_else(|| anyhow!("Could not configure agent: missing model"))?;
-                crate::model::ModelConfig::new(&model_name)
+                crate::model::model_config_from_goose_config(&model_name)
                     .map_err(|e| anyhow!("Could not configure agent: invalid model {}", e))?
                     .with_canonical_limits(&provider_name)
             }
@@ -2548,9 +2549,12 @@ impl Agent {
                 .get_goose_model()
                 .ok()
                 .ok_or_else(|| anyhow!("Could not configure fallback provider: missing model"))?;
-            let fallback_model_config = crate::model::ModelConfig::new(&fallback_model_name)
-                .map_err(|e| anyhow!("Could not configure fallback provider: invalid model {}", e))?
-                .with_canonical_limits(&fallback_provider_name);
+            let fallback_model_config =
+                crate::model::model_config_from_goose_config(&fallback_model_name)
+                    .map_err(|e| {
+                        anyhow!("Could not configure fallback provider: invalid model {}", e)
+                    })?
+                    .with_canonical_limits(&fallback_provider_name);
 
             let fallback_provider = crate::providers::create(
                 &fallback_provider_name,
@@ -2956,12 +2960,12 @@ mod tests {
         fn get_name(&self) -> &str {
             "test-action-required"
         }
-        fn get_model_config(&self) -> crate::model::ModelConfig {
-            crate::model::ModelConfig::new("test").unwrap()
+        fn get_model_config(&self) -> goose_types::ModelConfig {
+            crate::model::model_config_from_goose_config("test").unwrap()
         }
         async fn stream(
             &self,
-            _: &crate::model::ModelConfig,
+            _: &goose_types::ModelConfig,
             _: &str,
             _: &str,
             _: &[crate::conversation::message::Message],
@@ -3144,7 +3148,7 @@ exit 0
     impl crate::providers::base::Provider for CountingTextProvider {
         async fn stream(
             &self,
-            _model_config: &crate::model::ModelConfig,
+            _model_config: &goose_types::ModelConfig,
             _session_id: &str,
             _system_prompt: &str,
             _messages: &[Message],
@@ -3156,8 +3160,8 @@ exit 0
             Ok(stream_from_single_message(message, usage))
         }
 
-        fn get_model_config(&self) -> crate::model::ModelConfig {
-            crate::model::ModelConfig::new("mock-model").unwrap()
+        fn get_model_config(&self) -> goose_types::ModelConfig {
+            crate::model::model_config_from_goose_config("mock-model").unwrap()
         }
 
         fn get_name(&self) -> &str {
