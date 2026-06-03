@@ -2,10 +2,7 @@ use anyhow::Result;
 use async_trait::async_trait;
 use futures::future::BoxFuture;
 
-/// Default HTTP timeout for all provider API calls.
-/// Long-running model inference can take several minutes, so we allow up to 10 minutes
-/// before giving up. Individual providers may override this via their own config key.
-pub const DEFAULT_PROVIDER_TIMEOUT_SECS: u64 = 600;
+pub use goose_providers::api_client::DEFAULT_PROVIDER_TIMEOUT_SECS;
 
 use super::errors::ProviderError;
 use super::inventory::{default_inventory_identity, InventoryIdentityInput};
