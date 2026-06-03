@@ -18,6 +18,7 @@ regex = { workspace = true }
 rmcp = { workspace = true, features = ["server"] }
 serde = { workspace = true }
 serde_json = { workspace = true }
+thiserror.workspace = true
 tracing.workspace = true
 unicode-normalization = { version = "0.1.25", default-features = false, features = ["std"] }
 utoipa = { workspace = true }

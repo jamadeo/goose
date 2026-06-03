@@ -10,10 +10,9 @@ pub use goose_types::{
 #[cfg(test)]
 mod tests {
     use crate::conversation::message::{Message, MessageContent, MessageMetadata};
-    use crate::conversation::*;
     use rmcp::model::{
         AnnotateAble, CallToolRequestParams, PromptMessage, PromptMessageContent,
-        PromptMessageRole, RawEmbeddedResource, RawImageContent, ResourceContents,
+        PromptMessageRole, RawEmbeddedResource, RawImageContent, ResourceContents, Role,
     };
     use rmcp::model::{ErrorCode, ErrorData};
     use rmcp::object;
