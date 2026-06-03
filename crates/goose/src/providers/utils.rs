@@ -5,6 +5,7 @@ use anyhow::Result;
 use base64::Engine;
 pub use goose_providers::function_name::{is_valid_function_name, sanitize_function_name};
 pub use goose_providers::google_response::{handle_response_google_compat, is_google_model};
+pub use goose_providers::image::ImageFormat;
 pub use goose_providers::json::{
     get_model, json_escape_control_chars_in_string, safely_parse_json, unescape_json_values,
 };
@@ -13,16 +14,10 @@ pub use goose_types::{
     extract_reasoning_effort, is_openai_responses_model, openai_reasoning_effort_for_thinking,
 };
 use rmcp::model::{AnnotateAble, ImageContent, RawImageContent};
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use serde_json::{json, Value};
 use std::io::Read;
 use std::path::Path;
-
-#[derive(Debug, Copy, Clone, Serialize, Deserialize)]
-pub enum ImageFormat {
-    OpenAi,
-    Anthropic,
-}
 
 /// Convert an image content into an image json based on format
 pub fn convert_image(image: &ImageContent, image_format: &ImageFormat) -> Value {

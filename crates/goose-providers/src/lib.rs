@@ -5,6 +5,7 @@ pub mod errors;
 pub mod function_name;
 pub mod google_response;
 pub mod http_status;
+pub mod image;
 pub mod json;
 pub mod metadata;
 pub mod models;
