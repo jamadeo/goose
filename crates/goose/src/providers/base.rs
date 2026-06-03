@@ -883,6 +883,106 @@ pub trait Provider: Send + Sync {
 /// messages will only be yielded once concatenated.
 pub type MessageStream = goose_providers::provider::MessageStream<Message>;
 
+pub struct GooseProviderAdapter<'a> {
+    provider: &'a dyn Provider,
+}
+
+impl<'a> GooseProviderAdapter<'a> {
+    pub fn new(provider: &'a dyn Provider) -> Self {
+        Self { provider }
+    }
+}
+
+#[async_trait]
+impl goose_providers::provider::Provider for GooseProviderAdapter<'_> {
+    type Message = Message;
+    type Tool = Tool;
+
+    fn get_name(&self) -> &str {
+        self.provider.get_name()
+    }
+
+    async fn stream(
+        &self,
+        model_config: &ModelConfig,
+        session_id: &str,
+        system: &str,
+        messages: &[Self::Message],
+        tools: &[Self::Tool],
+    ) -> Result<MessageStream, ProviderError> {
+        self.provider
+            .stream(model_config, session_id, system, messages, tools)
+            .await
+    }
+
+    fn get_model_config(&self) -> ModelConfig {
+        self.provider.get_model_config()
+    }
+
+    fn retry_config(&self) -> RetryConfig {
+        self.provider.retry_config()
+    }
+
+    async fn fetch_supported_models(&self) -> Result<Vec<String>, ProviderError> {
+        self.provider.fetch_supported_models().await
+    }
+
+    async fn fetch_supported_model_info(&self) -> Result<Vec<ModelInfo>, ProviderError> {
+        self.provider.fetch_supported_model_info().await
+    }
+
+    async fn fetch_model_info(&self, model_name: &str) -> Result<ModelInfo, ProviderError> {
+        self.provider.fetch_model_info(model_name).await
+    }
+
+    fn skip_canonical_filtering(&self) -> bool {
+        self.provider.skip_canonical_filtering()
+    }
+
+    async fn fetch_recommended_models(&self) -> Result<Vec<String>, ProviderError> {
+        self.provider.fetch_recommended_models().await
+    }
+
+    async fn fetch_recommended_model_info(&self) -> Result<Vec<ModelInfo>, ProviderError> {
+        self.provider.fetch_recommended_model_info().await
+    }
+
+    async fn map_to_canonical_model(
+        &self,
+        provider_model: &str,
+    ) -> Result<Option<String>, ProviderError> {
+        self.provider.map_to_canonical_model(provider_model).await
+    }
+
+    fn supports_embeddings(&self) -> bool {
+        self.provider.supports_embeddings()
+    }
+
+    fn manages_own_context(&self) -> bool {
+        self.provider.manages_own_context()
+    }
+
+    async fn supports_cache_control(&self) -> bool {
+        self.provider.supports_cache_control().await
+    }
+
+    async fn create_embeddings(
+        &self,
+        session_id: &str,
+        texts: Vec<String>,
+    ) -> Result<Vec<Vec<f32>>, ProviderError> {
+        self.provider.create_embeddings(session_id, texts).await
+    }
+
+    async fn configure_oauth(&self) -> Result<(), ProviderError> {
+        self.provider.configure_oauth().await
+    }
+
+    async fn refresh_credentials(&self) -> Result<(), ProviderError> {
+        self.provider.refresh_credentials().await
+    }
+}
+
 pub fn stream_from_single_message(message: Message, usage: ProviderUsage) -> MessageStream {
     let stream = futures::stream::once(async move { Ok((Some(message), Some(usage))) });
     Box::pin(stream)
@@ -1391,6 +1491,70 @@ mod tests {
         let (msg, usage) = collect_stream(Box::pin(stream)).await.unwrap();
         assert_eq!(content_to_strings(&msg), vec!["Hello"]);
         assert_eq!(usage.model, "unknown");
+    }
+
+    #[derive(Clone)]
+    struct AdapterTestProvider {
+        model_config: ModelConfig,
+    }
+
+    #[async_trait]
+    impl Provider for AdapterTestProvider {
+        fn get_name(&self) -> &str {
+            "adapter-test"
+        }
+
+        async fn stream(
+            &self,
+            _model_config: &ModelConfig,
+            _session_id: &str,
+            _system: &str,
+            _messages: &[Message],
+            _tools: &[Tool],
+        ) -> Result<MessageStream, ProviderError> {
+            let message = Message::assistant().with_text("adapted");
+            let usage = ProviderUsage::new("adapter-model".to_string(), Usage::default());
+            Ok(stream_from_single_message(message, usage))
+        }
+
+        fn get_model_config(&self) -> ModelConfig {
+            self.model_config.clone()
+        }
+    }
+
+    #[tokio::test]
+    async fn test_goose_provider_adapter_forwards_to_goose_provider_trait() {
+        let provider = AdapterTestProvider {
+            model_config: ModelConfig {
+                model_name: "adapter-model".to_string(),
+                ..Default::default()
+            },
+        };
+        let adapter = GooseProviderAdapter::new(&provider);
+
+        assert_eq!(
+            goose_providers::provider::Provider::get_name(&adapter),
+            "adapter-test"
+        );
+        assert_eq!(
+            goose_providers::provider::Provider::get_model_config(&adapter).model_name,
+            "adapter-model"
+        );
+
+        let stream = goose_providers::provider::Provider::stream(
+            &adapter,
+            &provider.get_model_config(),
+            "test-session",
+            "system",
+            &[],
+            &[],
+        )
+        .await
+        .unwrap();
+        let (message, usage) = collect_stream(stream).await.unwrap();
+
+        assert_eq!(message.as_concat_text(), "adapted");
+        assert_eq!(usage.model, "adapter-model");
     }
 
     #[test]
