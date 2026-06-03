@@ -1,7 +1,6 @@
 use anyhow::Result;
 use async_trait::async_trait;
 use futures::future::BoxFuture;
-use serde::{Deserialize, Serialize};
 
 /// Default HTTP timeout for all provider API calls.
 /// Long-running model inference can take several minutes, so we allow up to 10 minutes
@@ -19,7 +18,6 @@ use crate::permission::PermissionConfirmation;
 use crate::utils::safe_truncate;
 pub use goose_types::{ConfigKey, ModelConfig, ModelInfo, ProviderType, ProviderUsage, Usage};
 use rmcp::model::Tool;
-use utoipa::ToSchema;
 
 use once_cell::sync::Lazy;
 use regex::Regex;
@@ -382,105 +380,7 @@ pub enum PermissionRouting {
     Noop,
 }
 
-/// Metadata about a provider's configuration requirements and capabilities
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
-pub struct ProviderMetadata {
-    /// The unique identifier for this provider
-    pub name: String,
-    /// Display name for the provider in UIs
-    pub display_name: String,
-    /// Description of the provider's capabilities
-    pub description: String,
-    /// The default/recommended model for this provider
-    pub default_model: String,
-    /// A list of currently known models with their capabilities
-    pub known_models: Vec<ModelInfo>,
-    /// Link to the docs where models can be found
-    pub model_doc_link: String,
-    /// Required configuration keys
-    pub config_keys: Vec<ConfigKey>,
-    /// step-by-step instructions for set up providers eg: api key
-    #[serde(default)]
-    pub setup_steps: Vec<String>,
-    /// Hint shown in the model picker when this provider manages its own model selection.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub model_selection_hint: Option<String>,
-}
-
-impl ProviderMetadata {
-    pub fn new(
-        name: &str,
-        display_name: &str,
-        description: &str,
-        default_model: &str,
-        model_names: Vec<&str>,
-        model_doc_link: &str,
-        config_keys: Vec<ConfigKey>,
-    ) -> Self {
-        Self {
-            name: name.to_string(),
-            display_name: display_name.to_string(),
-            description: description.to_string(),
-            default_model: default_model.to_string(),
-            known_models: model_names
-                .iter()
-                .map(|&model_name| {
-                    goose_providers::models::model_info_for_provider_model(name, model_name)
-                })
-                .collect(),
-            model_doc_link: model_doc_link.to_string(),
-            config_keys,
-            setup_steps: vec![],
-            model_selection_hint: None,
-        }
-    }
-
-    pub fn with_models(
-        name: &str,
-        display_name: &str,
-        description: &str,
-        default_model: &str,
-        models: Vec<ModelInfo>,
-        model_doc_link: &str,
-        config_keys: Vec<ConfigKey>,
-    ) -> Self {
-        Self {
-            name: name.to_string(),
-            display_name: display_name.to_string(),
-            description: description.to_string(),
-            default_model: default_model.to_string(),
-            known_models: models,
-            model_doc_link: model_doc_link.to_string(),
-            config_keys,
-            setup_steps: vec![],
-            model_selection_hint: None,
-        }
-    }
-
-    pub fn empty() -> Self {
-        Self {
-            name: "".to_string(),
-            display_name: "".to_string(),
-            description: "".to_string(),
-            default_model: "".to_string(),
-            known_models: vec![],
-            model_doc_link: "".to_string(),
-            config_keys: vec![],
-            setup_steps: vec![],
-            model_selection_hint: None,
-        }
-    }
-
-    pub fn with_setup_steps(mut self, steps: Vec<&str>) -> Self {
-        self.setup_steps = steps.into_iter().map(|s| s.to_string()).collect();
-        self
-    }
-
-    pub fn with_model_selection_hint(mut self, hint: &str) -> Self {
-        self.model_selection_hint = Some(hint.to_string());
-        self
-    }
-}
+pub use goose_providers::metadata::ProviderMetadata;
 
 pub fn config_key_from_config_value_type<T: ConfigValue>(
     required: bool,
