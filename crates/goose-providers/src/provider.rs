@@ -6,12 +6,6 @@ use futures::Stream;
 use goose_types::{ModelConfig, ModelInfo, ProviderUsage};
 use std::pin::Pin;
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum PermissionRouting {
-    ActionRequired,
-    Noop,
-}
-
 pub type MessageStream<Message> = Pin<
     Box<dyn Stream<Item = Result<(Option<Message>, Option<ProviderUsage>), ProviderError>> + Send>,
 >;
@@ -20,9 +14,6 @@ pub type MessageStream<Message> = Pin<
 pub trait Provider: Send + Sync {
     type Message: Send + Sync + 'static;
     type Tool: Send + Sync + 'static;
-    type Conversation: Send + Sync + 'static;
-    type PermissionConfirmation: Send + Sync + 'static;
-    type Mode: Send + Sync + 'static;
 
     fn get_name(&self) -> &str;
 
@@ -112,24 +103,6 @@ pub trait Provider: Send + Sync {
         ))
     }
 
-    fn get_initial_user_messages(&self, _messages: &Self::Conversation) -> Vec<String> {
-        Vec::new()
-    }
-
-    fn get_preprompt_context(&self, _messages: &Self::Conversation) -> String {
-        String::new()
-    }
-
-    async fn generate_session_name(
-        &self,
-        _session_id: &str,
-        _messages: &Self::Conversation,
-    ) -> Result<String, ProviderError> {
-        Err(ProviderError::NotImplemented(
-            "generate_session_name not implemented for this provider".to_string(),
-        ))
-    }
-
     async fn configure_oauth(&self) -> Result<(), ProviderError> {
         Err(ProviderError::ExecutionError(
             "OAuth configuration not supported by this provider".to_string(),
@@ -140,21 +113,5 @@ pub trait Provider: Send + Sync {
         Err(ProviderError::NotImplemented(
             "credential refresh not supported by this provider".to_string(),
         ))
-    }
-
-    async fn update_mode(&self, _session_id: &str, _mode: Self::Mode) -> Result<(), ProviderError> {
-        Ok(())
-    }
-
-    fn permission_routing(&self) -> PermissionRouting {
-        PermissionRouting::Noop
-    }
-
-    async fn handle_permission_confirmation(
-        &self,
-        _request_id: &str,
-        _confirmation: &Self::PermissionConfirmation,
-    ) -> bool {
-        false
     }
 }

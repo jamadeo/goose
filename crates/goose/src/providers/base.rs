@@ -17,7 +17,6 @@ use crate::conversation::message::{Message, MessageContent};
 use crate::conversation::Conversation;
 use crate::permission::PermissionConfirmation;
 use crate::utils::safe_truncate;
-pub use goose_providers::provider::PermissionRouting;
 pub use goose_types::{ConfigKey, ModelConfig, ModelInfo, ProviderType, ProviderUsage, Usage};
 use rmcp::model::Tool;
 use utoipa::ToSchema;
@@ -376,6 +375,12 @@ pub fn get_current_model() -> Option<String> {
 }
 
 pub static MSG_COUNT_FOR_SESSION_NAME_GENERATION: usize = 3;
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum PermissionRouting {
+    ActionRequired,
+    Noop,
+}
 
 /// Metadata about a provider's configuration requirements and capabilities
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
