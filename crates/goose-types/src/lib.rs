@@ -450,19 +450,16 @@ pub fn extract_reasoning_effort(model_name: &str) -> (String, Option<String>) {
         return (model_name.to_string(), None);
     }
 
-    static RE: OnceLock<Regex> = OnceLock::new();
-    let re = RE.get_or_init(|| {
-        RegexBuilder::new(r"^(?P<base>.+)-(?P<effort>none|low|medium|high|xhigh)$")
-            .case_insensitive(true)
-            .unicode(false)
-            .build()
-            .unwrap()
-    });
-
-    if let Some(captures) = re.captures(model_name) {
-        let base = captures["base"].to_string();
-        let effort = captures["effort"].to_ascii_lowercase();
-        return (base, Some(effort));
+    let lower = model_name.to_ascii_lowercase();
+    for effort in ["none", "low", "medium", "high", "xhigh"] {
+        let suffix = format!("-{effort}");
+        if lower.ends_with(&suffix) {
+            let base = model_name
+                .chars()
+                .take(model_name.chars().count() - suffix.chars().count())
+                .collect();
+            return (base, Some(effort.to_string()));
+        }
     }
 
     (model_name.to_string(), None)
@@ -513,5 +510,87 @@ fn openai_reasoning_efforts_for_model(model_name: &str) -> &'static [&'static st
         }
     } else {
         &["low", "medium", "high"]
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn openai_responses_model_matches_o_and_gpt5_families() {
+        for model in [
+            "o3",
+            "o3-mini",
+            "o4-mini",
+            "gpt-5",
+            "gpt-5-pro",
+            "gpt-5.4",
+            "gpt-5.4-mini",
+            "gpt-5-4",
+            "gpt-5-2-pro",
+            "databricks-gpt-5.4",
+            "goose-gpt-5.4-high",
+            "headless-goose-o3-mini",
+        ] {
+            assert!(is_openai_responses_model(model), "{model} should match");
+        }
+    }
+
+    #[test]
+    fn openai_responses_model_rejects_other_families() {
+        for model in [
+            "gpt-4o",
+            "claude-sonnet-4",
+            "databricks-claude-sonnet-4",
+            "llama-3-70b",
+        ] {
+            assert!(
+                !is_openai_responses_model(model),
+                "{model} should not match"
+            );
+        }
+    }
+
+    #[test]
+    fn extract_reasoning_effort_for_responses_models() {
+        for (model, expected_name, expected_effort) in [
+            ("o3-none", "o3", Some("none")),
+            ("o3-xhigh", "o3", Some("xhigh")),
+            ("gpt-5-low", "gpt-5", Some("low")),
+            ("gpt-5.4", "gpt-5.4", None),
+            (
+                "databricks-gpt-5.4-high",
+                "databricks-gpt-5.4",
+                Some("high"),
+            ),
+            ("databricks-o3-low", "databricks-o3", Some("low")),
+            ("goose-gpt-5-high", "goose-gpt-5", Some("high")),
+            ("gpt-4o", "gpt-4o", None),
+        ] {
+            let (name, effort) = extract_reasoning_effort(model);
+            assert_eq!(name, expected_name, "unexpected base model for {model}");
+            assert_eq!(
+                effort.as_deref(),
+                expected_effort,
+                "unexpected effort for {model}"
+            );
+        }
+    }
+
+    #[test]
+    fn openai_reasoning_effort_for_thinking_uses_supported_effort() {
+        assert_eq!(
+            openai_reasoning_effort_for_thinking("gpt-5-pro", ThinkingEffort::Max),
+            Some("high".to_string())
+        );
+        assert_eq!(
+            openai_reasoning_effort_for_thinking("gpt-5.4", ThinkingEffort::Max),
+            Some("xhigh".to_string())
+        );
+        assert_eq!(
+            openai_reasoning_effort_for_thinking("o3", ThinkingEffort::Off),
+            Some("none".to_string())
+        );
     }
 }

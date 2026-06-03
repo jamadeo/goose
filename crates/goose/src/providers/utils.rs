@@ -5,7 +5,9 @@ use crate::providers::errors::ProviderError;
 use anyhow::Result;
 use base64::Engine;
 use goose_types::ModelConfig;
-use goose_types::ThinkingEffort;
+pub use goose_types::{
+    extract_reasoning_effort, is_openai_responses_model, openai_reasoning_effort_for_thinking,
+};
 use regex::Regex;
 use reqwest::{Response, StatusCode};
 use rmcp::model::{AnnotateAble, ImageContent, RawImageContent};
@@ -189,93 +191,6 @@ pub async fn handle_response_google_compat(response: Response) -> Result<Value, 
             );
             Err(ProviderError::RequestFailed(format!("Request failed with status {} at {url}", final_status)))
         }
-    }
-}
-
-/// True when the model should use the OpenAI Responses API.
-///
-/// The Responses API is backwards-compatible with all OpenAI reasoning
-/// models, so every `o`-series (`o1`, `o3`, `o4`, …) and `gpt-5` variant
-/// routes here. The matcher intentionally scans the full model identifier so
-/// hosted aliases like `databricks-gpt-5.4`, `goose-o3-mini`, or
-/// `headless-goose-o3-mini` work without provider-specific normalization.
-pub fn is_openai_responses_model(model_name: &str) -> bool {
-    static RE: OnceLock<Regex> = OnceLock::new();
-    let re =
-        RE.get_or_init(|| Regex::new(r"(?i)(?:^|[-/])(?:o\d+(?:$|-)|gpt-5(?:$|[-.]))").unwrap());
-    re.is_match(model_name)
-}
-
-/// Extract an explicit reasoning-effort suffix from a model name.
-///
-/// Returns `(base_model_name, Some(effort))` when the user appended a
-/// recognised suffix like `-high` or `-xhigh`, e.g. `gpt-5.4-high` →
-/// `("gpt-5.4", Some("high"))`.
-///
-/// When no suffix is present the effort is `None` — callers should omit
-/// the `reasoning` field entirely so the API applies its own per-model
-/// default. This avoids hard-coding a default that may be invalid for
-/// certain models (e.g. `gpt-5-pro` only accepts `high`; older o-series
-/// models reject `none` and `xhigh`).
-pub fn extract_reasoning_effort(model_name: &str) -> (String, Option<String>) {
-    if !is_openai_responses_model(model_name) {
-        return (model_name.to_string(), None);
-    }
-
-    static RE: OnceLock<Regex> = OnceLock::new();
-    let re = RE.get_or_init(|| {
-        Regex::new(r"(?i)^(?P<base>.+)-(?P<effort>none|low|medium|high|xhigh)$").unwrap()
-    });
-
-    if let Some(captures) = re.captures(model_name) {
-        let base = captures["base"].to_string();
-        let effort = captures["effort"].to_ascii_lowercase();
-        return (base, Some(effort));
-    }
-
-    (model_name.to_string(), None)
-}
-
-pub fn openai_reasoning_effort_for_thinking(
-    model_name: &str,
-    effort: ThinkingEffort,
-) -> Option<String> {
-    if effort == ThinkingEffort::Off {
-        return Some("none".to_string());
-    }
-
-    let supported = openai_reasoning_efforts_for_model(model_name);
-    let preferred: &[&str] = match effort {
-        ThinkingEffort::Off => unreachable!(),
-        ThinkingEffort::Low => &["low", "medium", "high", "xhigh"],
-        ThinkingEffort::Medium => &["medium", "high", "low", "xhigh"],
-        ThinkingEffort::High => &["high", "medium", "xhigh", "low"],
-        ThinkingEffort::Max => &["xhigh", "high", "medium", "low"],
-    };
-
-    preferred
-        .iter()
-        .find(|level| supported.contains(level))
-        .map(|level| (*level).to_string())
-}
-
-fn openai_reasoning_efforts_for_model(model_name: &str) -> &'static [&'static str] {
-    let normalized = model_name.to_ascii_lowercase();
-
-    if normalized.contains("gpt-5") {
-        if normalized.contains("-pro") || normalized.contains("/pro") {
-            &["high"]
-        } else if normalized.contains("gpt-5.4")
-            || normalized.contains("gpt-5-4")
-            || normalized.contains("gpt-5.5")
-            || normalized.contains("gpt-5-5")
-        {
-            &["low", "medium", "high", "xhigh"]
-        } else {
-            &["low", "medium", "high"]
-        }
-    } else {
-        &["low", "medium", "high"]
     }
 }
 
