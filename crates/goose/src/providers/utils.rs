@@ -6,7 +6,7 @@ use base64::Engine;
 pub use goose_providers::function_name::{is_valid_function_name, sanitize_function_name};
 pub use goose_providers::google_response::{handle_response_google_compat, is_google_model};
 pub use goose_providers::json::{
-    json_escape_control_chars_in_string, safely_parse_json, unescape_json_values,
+    get_model, json_escape_control_chars_in_string, safely_parse_json, unescape_json_values,
 };
 use goose_types::ModelConfig;
 pub use goose_types::{
@@ -66,19 +66,6 @@ pub fn filter_extensions_from_system_prompt(system: &str) -> String {
             .get(..extensions_start)
             .map(|s| s.trim_end().to_string())
             .unwrap_or_else(|| system.to_string())
-    }
-}
-
-/// Extract the model name from a JSON object. Common with most providers to have this top level attribute.
-pub fn get_model(data: &Value) -> String {
-    if let Some(model) = data.get("model") {
-        if let Some(model_str) = model.as_str() {
-            model_str.to_string()
-        } else {
-            "Unknown".to_string()
-        }
-    } else {
-        "Unknown".to_string()
     }
 }
 
