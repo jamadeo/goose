@@ -2,7 +2,6 @@ use crate::model::GooseModelConfigExt;
 use anyhow::Result;
 use async_trait::async_trait;
 use futures::future::BoxFuture;
-use futures::Stream;
 use serde::{Deserialize, Serialize};
 
 /// Default HTTP timeout for all provider API calls.
@@ -20,6 +19,7 @@ use crate::conversation::Conversation;
 use crate::permission::PermissionConfirmation;
 use crate::utils::safe_truncate;
 use goose_providers::canonical::{map_to_canonical_model, CanonicalModelRegistry, Modality};
+pub use goose_providers::provider::PermissionRouting;
 pub use goose_types::{ConfigKey, ModelConfig, ModelInfo, ProviderType, ProviderUsage, Usage};
 use rmcp::model::Tool;
 use utoipa::ToSchema;
@@ -27,7 +27,6 @@ use utoipa::ToSchema;
 use once_cell::sync::Lazy;
 use regex::Regex;
 use std::path::PathBuf;
-use std::pin::Pin;
 use std::sync::LazyLock;
 use std::sync::Mutex;
 
@@ -607,12 +606,6 @@ pub trait ProviderDef: Send + Sync {
     }
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum PermissionRouting {
-    ActionRequired,
-    Noop,
-}
-
 /// Base trait for AI providers (OpenAI, Anthropic, etc)
 #[async_trait]
 pub trait Provider: Send + Sync {
@@ -958,9 +951,7 @@ pub trait Provider: Send + Sync {
 /// A message stream yields partial text content but complete tool calls, all within the Message object
 /// So a message with text will contain potentially just a word of a longer response, but tool calls
 /// messages will only be yielded once concatenated.
-pub type MessageStream = Pin<
-    Box<dyn Stream<Item = Result<(Option<Message>, Option<ProviderUsage>), ProviderError>> + Send>,
->;
+pub type MessageStream = goose_providers::provider::MessageStream<Message>;
 
 pub fn stream_from_single_message(message: Message, usage: ProviderUsage) -> MessageStream {
     let stream = futures::stream::once(async move { Ok((Some(message), Some(usage))) });
