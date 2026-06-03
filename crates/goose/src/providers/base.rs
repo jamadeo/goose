@@ -9,7 +9,7 @@ use super::inventory::{default_inventory_identity, InventoryIdentityInput};
 use super::retry::RetryConfig;
 use crate::config::base::ConfigValue;
 use crate::config::{Config, ExtensionConfig, GooseMode};
-use crate::conversation::message::{Message, MessageContent};
+use crate::conversation::message::Message;
 use crate::conversation::Conversation;
 use crate::permission::PermissionConfirmation;
 use crate::utils::safe_truncate;
@@ -22,6 +22,7 @@ use std::path::PathBuf;
 use std::sync::LazyLock;
 use std::sync::Mutex;
 
+pub use goose_providers::provider::{collect_stream, stream_from_single_message};
 pub use goose_providers::text::{split_think_blocks, FilterOut, ThinkFilter};
 
 fn strip_xml_tags(text: &str) -> String {
@@ -609,66 +610,10 @@ impl goose_providers::provider::Provider for GooseProviderAdapter<'_> {
     }
 }
 
-pub fn stream_from_single_message(message: Message, usage: ProviderUsage) -> MessageStream {
-    let stream = futures::stream::once(async move { Ok((Some(message), Some(usage))) });
-    Box::pin(stream)
-}
-
-/// Collect all chunks from a MessageStream into a single Message and ProviderUsage
-pub async fn collect_stream(
-    mut stream: MessageStream,
-) -> Result<(Message, ProviderUsage), ProviderError> {
-    use futures::StreamExt;
-
-    let mut final_message: Option<Message> = None;
-    let mut final_usage: Option<ProviderUsage> = None;
-
-    while let Some(result) = stream.next().await {
-        let (msg_opt, usage_opt) = result?;
-
-        if let Some(msg) = msg_opt {
-            final_message = Some(match final_message {
-                Some(mut prev) => {
-                    for new_content in msg.content {
-                        match (&mut prev.content.last_mut(), &new_content) {
-                            // Coalesce consecutive text blocks
-                            (
-                                Some(MessageContent::Text(last_text)),
-                                MessageContent::Text(new_text),
-                            ) => {
-                                last_text.text.push_str(&new_text.text);
-                            }
-                            _ => {
-                                prev.content.push(new_content);
-                            }
-                        }
-                    }
-                    prev
-                }
-                None => msg,
-            });
-        }
-
-        if let Some(usage) = usage_opt {
-            final_usage = Some(usage);
-        }
-    }
-
-    match final_message {
-        Some(msg) => {
-            let usage = final_usage
-                .unwrap_or_else(|| ProviderUsage::new("unknown".to_string(), Usage::default()));
-            Ok((msg, usage))
-        }
-        None => Err(ProviderError::ExecutionError(
-            "Stream yielded no message".to_string(),
-        )),
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use goose_types::MessageContent;
     use std::collections::HashMap;
     use test_case::test_case;
 
