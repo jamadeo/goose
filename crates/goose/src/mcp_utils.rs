@@ -1,8 +1,7 @@
 use base64::Engine;
+pub use goose_types::ToolResult;
 pub use rmcp::model::ErrorData;
 use rmcp::model::ResourceContents;
-
-pub type ToolResult<T> = Result<T, ErrorData>;
 
 pub fn extract_text_from_resource(resource: &ResourceContents) -> String {
     match resource {
