@@ -4698,6 +4698,7 @@ dependencies = [
  "tokio",
  "tracing",
  "url",
+ "utoipa 4.2.3",
  "uuid",
 ]
 
