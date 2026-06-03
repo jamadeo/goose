@@ -1,4 +1,5 @@
 use crate::errors::ProviderError;
+use crate::models;
 use crate::retry::RetryConfig;
 use async_trait::async_trait;
 use futures::Stream;
@@ -45,12 +46,18 @@ pub trait Provider: Send + Sync {
     }
 
     async fn fetch_supported_model_info(&self) -> Result<Vec<ModelInfo>, ProviderError> {
-        Ok(vec![])
+        Ok(self
+            .fetch_supported_models()
+            .await?
+            .iter()
+            .map(|model_name| models::model_info_for_provider_model(self.get_name(), model_name))
+            .collect())
     }
 
-    async fn fetch_model_info(&self, _model_name: &str) -> Result<ModelInfo, ProviderError> {
-        Err(ProviderError::NotImplemented(
-            "fetch_model_info not implemented for this provider".to_string(),
+    async fn fetch_model_info(&self, model_name: &str) -> Result<ModelInfo, ProviderError> {
+        Ok(models::model_info_for_provider_model(
+            self.get_name(),
+            model_name,
         ))
     }
 
@@ -59,18 +66,28 @@ pub trait Provider: Send + Sync {
     }
 
     async fn fetch_recommended_models(&self) -> Result<Vec<String>, ProviderError> {
-        self.fetch_supported_models().await
+        models::recommended_models(
+            self.get_name(),
+            self.fetch_supported_models().await?,
+            self.get_model_config().toolshim,
+            self.skip_canonical_filtering(),
+        )
     }
 
     async fn fetch_recommended_model_info(&self) -> Result<Vec<ModelInfo>, ProviderError> {
-        self.fetch_supported_model_info().await
+        Ok(self
+            .fetch_recommended_models()
+            .await?
+            .iter()
+            .map(|model_name| models::model_info_for_provider_model(self.get_name(), model_name))
+            .collect())
     }
 
     async fn map_to_canonical_model(
         &self,
-        _provider_model: &str,
+        provider_model: &str,
     ) -> Result<Option<String>, ProviderError> {
-        Ok(None)
+        models::canonical_model_id(self.get_name(), provider_model)
     }
 
     fn supports_embeddings(&self) -> bool {
