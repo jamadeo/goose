@@ -2,7 +2,9 @@ use crate::conversation::tool_result_serde;
 use crate::mcp_utils::{extract_text_from_resource, ToolResult};
 use crate::utils::sanitize_unicode_tags;
 use chrono::Utc;
-pub use goose_types::{InferenceMetadata, RedactedThinkingContent, ThinkingContent};
+pub use goose_types::{
+    InferenceMetadata, MessageMetadata, RedactedThinkingContent, ThinkingContent,
+};
 use rmcp::model::{
     AnnotateAble, CallToolRequestParams, CallToolResult, Content, ImageContent, JsonObject,
     PromptMessage, PromptMessageContent, PromptMessageRole, RawContent, RawImageContent,
@@ -634,94 +636,6 @@ impl From<PromptMessage> for Message {
         };
 
         message.with_content(content)
-    }
-}
-
-#[derive(ToSchema, Clone, PartialEq, Serialize, Deserialize, Debug)]
-/// Metadata for message visibility and model inference details
-#[serde(rename_all = "camelCase")]
-pub struct MessageMetadata {
-    /// Whether the message should be visible to the user in the UI
-    pub user_visible: bool,
-    /// Whether the message should be included in the agent's context window
-    pub agent_visible: bool,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub inference: Option<InferenceMetadata>,
-}
-
-impl Default for MessageMetadata {
-    fn default() -> Self {
-        MessageMetadata {
-            user_visible: true,
-            agent_visible: true,
-            inference: None,
-        }
-    }
-}
-
-impl MessageMetadata {
-    /// Create metadata for messages visible only to the agent
-    pub fn agent_only() -> Self {
-        MessageMetadata {
-            user_visible: false,
-            agent_visible: true,
-            ..Default::default()
-        }
-    }
-
-    /// Create metadata for messages visible only to the user
-    pub fn user_only() -> Self {
-        MessageMetadata {
-            user_visible: true,
-            agent_visible: false,
-            ..Default::default()
-        }
-    }
-
-    /// Create metadata for messages visible to neither user nor agent (archived)
-    pub fn invisible() -> Self {
-        MessageMetadata {
-            user_visible: false,
-            agent_visible: false,
-            ..Default::default()
-        }
-    }
-
-    /// Return a copy with agent_visible set to false
-    pub fn with_agent_invisible(self) -> Self {
-        Self {
-            agent_visible: false,
-            ..self
-        }
-    }
-
-    /// Return a copy with user_visible set to false
-    pub fn with_user_invisible(self) -> Self {
-        Self {
-            user_visible: false,
-            ..self
-        }
-    }
-
-    /// Return a copy with agent_visible set to true
-    pub fn with_agent_visible(self) -> Self {
-        Self {
-            agent_visible: true,
-            ..self
-        }
-    }
-
-    /// Return a copy with user_visible set to true
-    pub fn with_user_visible(self) -> Self {
-        Self {
-            user_visible: true,
-            ..self
-        }
-    }
-
-    pub fn with_inference(mut self, inference: InferenceMetadata) -> Self {
-        self.inference = Some(inference);
-        self
     }
 }
 
