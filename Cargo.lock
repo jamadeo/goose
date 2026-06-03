@@ -4795,6 +4795,7 @@ dependencies = [
  "rmcp",
  "serde",
  "serde_json",
+ "thiserror 1.0.69",
  "tracing",
  "unicode-normalization",
  "utoipa 4.2.3",
