@@ -87,6 +87,8 @@ impl Default for MessageMetadata {
     }
 }
 
+pub type MessageProviderMetadata = serde_json::Map<String, serde_json::Value>;
+
 impl MessageMetadata {
     pub fn agent_only() -> Self {
         Self {
