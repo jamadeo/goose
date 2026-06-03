@@ -13,7 +13,8 @@ use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::Command;
 
 use super::base::{
-    ConfigKey, MessageStream, Provider, ProviderDef, ProviderMetadata, ProviderUsage, Usage,
+    config_key_from_config_value_type, MessageStream, Provider, ProviderDef, ProviderMetadata,
+    ProviderUsage, Usage,
 };
 use super::errors::ProviderError;
 use super::utils::{filter_extensions_from_system_prompt, RequestLog};
@@ -631,8 +632,8 @@ impl ProviderDef for CodexProvider {
             CODEX_KNOWN_MODELS.to_vec(),
             CODEX_DOC_URL,
             vec![
-                ConfigKey::from_value_type::<CodexCommand>(true, false, true),
-                ConfigKey::from_value_type::<CodexSkipGitCheck>(false, false, true),
+                config_key_from_config_value_type::<CodexCommand>(true, false, true),
+                config_key_from_config_value_type::<CodexSkipGitCheck>(false, false, true),
             ],
         )
     }

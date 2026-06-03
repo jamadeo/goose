@@ -20,7 +20,7 @@ use crate::conversation::Conversation;
 use crate::permission::PermissionConfirmation;
 use crate::utils::safe_truncate;
 use goose_providers::canonical::{map_to_canonical_model, CanonicalModelRegistry, Modality};
-pub use goose_types::{ModelConfig, ProviderUsage, Usage};
+pub use goose_types::{ConfigKey, ModelConfig, ModelInfo, ProviderType, ProviderUsage, Usage};
 use rmcp::model::Tool;
 use utoipa::ToSchema;
 
@@ -380,64 +380,6 @@ pub fn get_current_model() -> Option<String> {
 
 pub static MSG_COUNT_FOR_SESSION_NAME_GENERATION: usize = 3;
 
-/// Information about a model's capabilities
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq)]
-pub struct ModelInfo {
-    /// The name of the model
-    pub name: String,
-    /// The underlying model resolved from provider metadata, when the configured model is an alias or endpoint.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub resolved_model: Option<String>,
-    /// The maximum context length this model supports
-    pub context_limit: usize,
-    /// Cost per token for input in USD (optional)
-    pub input_token_cost: Option<f64>,
-    /// Cost per token for output in USD (optional)
-    pub output_token_cost: Option<f64>,
-    /// Currency for the costs (default: "$")
-    pub currency: Option<String>,
-    /// Whether this model supports cache control
-    pub supports_cache_control: Option<bool>,
-    /// Whether this model supports reasoning/thinking controls
-    #[serde(default)]
-    pub reasoning: bool,
-}
-
-impl ModelInfo {
-    /// Create a new ModelInfo with just name and context limit
-    pub fn new(name: impl Into<String>, context_limit: usize) -> Self {
-        Self {
-            name: name.into(),
-            resolved_model: None,
-            context_limit,
-            input_token_cost: None,
-            output_token_cost: None,
-            currency: None,
-            supports_cache_control: None,
-            reasoning: false,
-        }
-    }
-
-    /// Create a new ModelInfo with cost information (per token)
-    pub fn with_cost(
-        name: impl Into<String>,
-        context_limit: usize,
-        input_cost: f64,
-        output_cost: f64,
-    ) -> Self {
-        Self {
-            name: name.into(),
-            resolved_model: None,
-            context_limit,
-            input_token_cost: Some(input_cost),
-            output_token_cost: Some(output_cost),
-            currency: Some("$".to_string()),
-            supports_cache_control: None,
-            reasoning: false,
-        }
-    }
-}
-
 fn model_info_for_provider_model(provider_name: &str, model_name: &str) -> ModelInfo {
     let registry = CanonicalModelRegistry::bundled().ok();
     let canonical = registry.as_ref().and_then(|registry| {
@@ -463,14 +405,6 @@ fn model_info_for_provider_model(provider_name: &str, model_name: &str) -> Model
         supports_cache_control: None,
         reasoning,
     }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
-pub enum ProviderType {
-    Preferred,
-    Builtin,
-    Declarative,
-    Custom,
 }
 
 /// Metadata about a provider's configuration requirements and capabilities
@@ -571,105 +505,12 @@ impl ProviderMetadata {
     }
 }
 
-/// Configuration key metadata for provider setup
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
-pub struct ConfigKey {
-    /// The name of the configuration key (e.g., "API_KEY")
-    pub name: String,
-    /// Whether this key is required for the provider to function
-    pub required: bool,
-    /// Whether this key should be stored securely (e.g., in keychain)
-    pub secret: bool,
-    /// Optional default value for the key
-    pub default: Option<String>,
-    /// Whether this key should be configured using an OAuth flow
-    /// When true, the provider's configure_oauth() method will be called instead of prompting for manual input
-    pub oauth_flow: bool,
-    /// Whether this OAuth flow uses the device code grant (RFC 8628)
-    /// When true, the user must enter a verification code in the browser
-    #[serde(default)]
-    pub device_code_flow: bool,
-    /// Whether this key should be shown prominently during provider setup
-    /// (onboarding, settings modal, CLI configure)
-    #[serde(default)]
-    pub primary: bool,
-}
-
-impl ConfigKey {
-    /// Create a new ConfigKey
-    pub fn new(
-        name: &str,
-        required: bool,
-        secret: bool,
-        default: Option<&str>,
-        primary: bool,
-    ) -> Self {
-        Self {
-            name: name.to_string(),
-            required,
-            secret,
-            default: default.map(|s| s.to_string()),
-            oauth_flow: false,
-            device_code_flow: false,
-            primary,
-        }
-    }
-
-    pub fn from_value_type<T: ConfigValue>(required: bool, secret: bool, primary: bool) -> Self {
-        Self {
-            name: T::KEY.to_string(),
-            required,
-            secret,
-            default: Some(T::DEFAULT.to_string()),
-            oauth_flow: false,
-            device_code_flow: false,
-            primary,
-        }
-    }
-
-    /// Create a new ConfigKey that uses an OAuth flow for configuration
-    ///
-    /// This is used for providers that support OAuth authentication instead of manual API key entry.
-    /// When oauth_flow is true, the configuration system will call the provider's configure_oauth() method.
-    pub fn new_oauth(
-        name: &str,
-        required: bool,
-        secret: bool,
-        default: Option<&str>,
-        primary: bool,
-    ) -> Self {
-        Self {
-            name: name.to_string(),
-            required,
-            secret,
-            default: default.map(|s| s.to_string()),
-            oauth_flow: true,
-            device_code_flow: false,
-            primary,
-        }
-    }
-
-    /// Create a new ConfigKey that uses OAuth device code flow (RFC 8628) for configuration
-    ///
-    /// Similar to new_oauth, but indicates the provider uses the device code grant where the user
-    /// must enter a verification code in the browser.
-    pub fn new_oauth_device_code(
-        name: &str,
-        required: bool,
-        secret: bool,
-        default: Option<&str>,
-        primary: bool,
-    ) -> Self {
-        Self {
-            name: name.to_string(),
-            required,
-            secret,
-            default: default.map(|s| s.to_string()),
-            oauth_flow: true,
-            device_code_flow: true,
-            primary,
-        }
-    }
+pub fn config_key_from_config_value_type<T: ConfigValue>(
+    required: bool,
+    secret: bool,
+    primary: bool,
+) -> ConfigKey {
+    ConfigKey::new(T::KEY, required, secret, Some(T::DEFAULT), primary)
 }
 
 pub trait ProviderUsageExt {
