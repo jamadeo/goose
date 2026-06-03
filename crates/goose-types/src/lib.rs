@@ -1,4 +1,4 @@
-use regex::Regex;
+use regex::{Regex, RegexBuilder};
 use serde::de::Deserializer;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -435,8 +435,13 @@ impl ModelConfig {
 
 pub fn is_openai_responses_model(model_name: &str) -> bool {
     static RE: OnceLock<Regex> = OnceLock::new();
-    let re =
-        RE.get_or_init(|| Regex::new(r"(?i)(?:^|[-/])(?:o[0-9]+(?:$|-)|gpt-5(?:$|[-.]))").unwrap());
+    let re = RE.get_or_init(|| {
+        RegexBuilder::new(r"(?:^|[-/])(?:o[0-9]+(?:$|-)|gpt-5(?:$|[-.]))")
+            .case_insensitive(true)
+            .unicode(false)
+            .build()
+            .unwrap()
+    });
     re.is_match(model_name)
 }
 
@@ -447,7 +452,11 @@ pub fn extract_reasoning_effort(model_name: &str) -> (String, Option<String>) {
 
     static RE: OnceLock<Regex> = OnceLock::new();
     let re = RE.get_or_init(|| {
-        Regex::new(r"(?i)^(?P<base>.+)-(?P<effort>none|low|medium|high|xhigh)$").unwrap()
+        RegexBuilder::new(r"^(?P<base>.+)-(?P<effort>none|low|medium|high|xhigh)$")
+            .case_insensitive(true)
+            .unicode(false)
+            .build()
+            .unwrap()
     });
 
     if let Some(captures) = re.captures(model_name) {

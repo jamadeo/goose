@@ -224,34 +224,7 @@ impl GooseModelConfigExt for ModelConfig {
             }
         }
 
-        let canonical =
-            goose_providers::canonical::maybe_get_canonical_model(provider_name, &self.model_name)
-                .or_else(|| {
-                    let (base, _effort) = goose_types::extract_reasoning_effort(&self.model_name);
-                    if base != self.model_name {
-                        goose_providers::canonical::maybe_get_canonical_model(provider_name, &base)
-                    } else {
-                        None
-                    }
-                });
-
-        if let Some(canonical) = canonical {
-            if self.context_limit.is_none() {
-                self.context_limit = Some(canonical.limit.context);
-            }
-            if self.max_tokens.is_none() {
-                self.max_tokens = canonical
-                    .limit
-                    .output
-                    .filter(|&output| output < canonical.limit.context)
-                    .map(|output| output as i32);
-            }
-            if self.reasoning.is_none() {
-                self.reasoning = canonical.reasoning;
-            }
-        }
-
-        self
+        goose_providers::models::model_config_with_canonical_limits(self, provider_name)
     }
 
     fn with_fast(

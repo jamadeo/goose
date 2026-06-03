@@ -13,7 +13,6 @@ use goose::config::GooseMode;
 use goose::providers::{create, testprovider::TestProvider};
 use goose::session::session_manager::SessionType;
 use goose::session::SessionManager;
-use goose_types::ModelConfig;
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
