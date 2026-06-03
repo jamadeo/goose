@@ -3,6 +3,7 @@ pub mod avian;
 pub mod canonical;
 pub mod errors;
 pub mod function_name;
+pub mod google_response;
 pub mod http_status;
 pub mod json;
 pub mod metadata;
