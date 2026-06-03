@@ -230,7 +230,7 @@ fn get_reasoning_effort(model_name: &str) -> String {
 }
 
 fn reasoning_effort_for_config(model_config: &ModelConfig) -> Option<String> {
-    use crate::model::ThinkingEffort;
+    use goose_types::ThinkingEffort;
 
     model_config
         .thinking_effort()

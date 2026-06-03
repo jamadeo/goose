@@ -542,7 +542,7 @@ fn get_thinking_config(model_config: &ModelConfig) -> Option<ThinkingConfig> {
     }
 
     if is_gemini_3 {
-        use crate::model::ThinkingEffort;
+        use goose_types::ThinkingEffort;
         let effort = model_config
             .thinking_effort()
             .unwrap_or(ThinkingEffort::Off);

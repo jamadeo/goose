@@ -1,6 +1,7 @@
 use crate::conversation::message::{Message, MessageContent, ProviderMetadata};
-use crate::model::{ModelConfig, ThinkingEffort};
+use crate::model::ModelConfig;
 use crate::providers::formats::openai;
+use goose_types::ThinkingEffort;
 use rmcp::model::Role;
 use serde_json::{json, Value};
 

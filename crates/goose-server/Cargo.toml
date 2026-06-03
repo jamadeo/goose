@@ -54,6 +54,7 @@ native-tls = [
 
 [dependencies]
 goose = { path = "../goose", default-features = false }
+goose-types = { path = "../goose-types", default-features = false }
 goose-providers = { path = "../goose-providers", default-features = false }
 goose-mcp = { path = "../goose-mcp", default-features = false }
 rmcp = { workspace = true }

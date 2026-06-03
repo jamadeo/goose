@@ -4484,6 +4484,7 @@ dependencies = [
  "goose-providers",
  "goose-sdk",
  "goose-test-support",
+ "goose-types",
  "http 1.4.1",
  "http-body-util",
  "icu_calendar",
@@ -4613,6 +4614,7 @@ dependencies = [
  "goose",
  "goose-mcp",
  "goose-providers",
+ "goose-types",
  "indicatif",
  "open",
  "rand 0.8.6",
@@ -4715,6 +4717,7 @@ dependencies = [
  "goose",
  "goose-mcp",
  "goose-providers",
+ "goose-types",
  "hex",
  "http 1.4.1",
  "openssl",
@@ -4763,6 +4766,14 @@ dependencies = [
  "rmcp",
  "serde_json",
  "tokio",
+]
+
+[[package]]
+name = "goose-types"
+version = "1.37.0"
+dependencies = [
+ "serde",
+ "utoipa 4.2.3",
 ]
 
 [[package]]

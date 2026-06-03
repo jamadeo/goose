@@ -2366,7 +2366,7 @@ mod tests {
         assert_eq!(current.model_name, "gpt-5.4");
         assert_eq!(
             current.thinking_effort(),
-            Some(goose::model::ThinkingEffort::High)
+            Some(goose_types::ThinkingEffort::High)
         );
 
         let switched = build_switched_model_config("openai", "gpt-5.4", &current).unwrap();

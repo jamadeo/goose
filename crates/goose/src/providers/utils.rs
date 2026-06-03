@@ -1,11 +1,12 @@
 use super::base::Usage;
 use super::errors::GoogleErrorCode;
 use crate::config::paths::Paths;
-use crate::model::{ModelConfig, ThinkingEffort};
+use crate::model::ModelConfig;
 use crate::providers::errors::ProviderError;
 use anyhow::{anyhow, Result};
 use base64::Engine;
 use fs_err::File;
+use goose_types::ThinkingEffort;
 use regex::Regex;
 use reqwest::{Response, StatusCode};
 use rmcp::model::{AnnotateAble, ImageContent, RawImageContent};

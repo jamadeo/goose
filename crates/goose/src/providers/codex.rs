@@ -60,25 +60,25 @@ pub struct CodexProvider {
 }
 
 impl CodexProvider {
-    fn legacy_reasoning_effort() -> Option<crate::model::ThinkingEffort> {
+    fn legacy_reasoning_effort() -> Option<goose_types::ThinkingEffort> {
         Config::global()
             .get_param::<String>("CODEX_REASONING_EFFORT")
             .ok()
             .and_then(|effort| match effort.to_lowercase().as_str() {
-                "none" => Some(crate::model::ThinkingEffort::Off),
-                "low" => Some(crate::model::ThinkingEffort::Low),
-                "medium" => Some(crate::model::ThinkingEffort::Medium),
-                "high" => Some(crate::model::ThinkingEffort::High),
-                "xhigh" => Some(crate::model::ThinkingEffort::Max),
+                "none" => Some(goose_types::ThinkingEffort::Off),
+                "low" => Some(goose_types::ThinkingEffort::Low),
+                "medium" => Some(goose_types::ThinkingEffort::Medium),
+                "high" => Some(goose_types::ThinkingEffort::High),
+                "xhigh" => Some(goose_types::ThinkingEffort::Max),
                 _ => None,
             })
     }
 
     fn map_thinking_effort(
         _model_name: &str,
-        effort: Option<crate::model::ThinkingEffort>,
+        effort: Option<goose_types::ThinkingEffort>,
     ) -> Option<String> {
-        use crate::model::ThinkingEffort;
+        use goose_types::ThinkingEffort;
         match effort
             .or_else(Self::legacy_reasoning_effort)
             .unwrap_or(ThinkingEffort::High)
@@ -1238,7 +1238,7 @@ mod tests {
 
     #[test]
     fn test_map_thinking_effort() {
-        use crate::model::ThinkingEffort;
+        use goose_types::ThinkingEffort;
 
         let _guard = env_lock::lock_env([
             ("CODEX_REASONING_EFFORT", None::<&str>),
