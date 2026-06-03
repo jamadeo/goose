@@ -1,4 +1,7 @@
+mod tool_result_serde;
+
 use regex::{Regex, RegexBuilder};
+use rmcp::model::{CallToolRequestParams, CallToolResult, ErrorData, JsonObject};
 use serde::de::Deserializer;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -89,6 +92,8 @@ impl Default for MessageMetadata {
 
 pub type MessageProviderMetadata = serde_json::Map<String, serde_json::Value>;
 
+pub type ToolResult<T> = Result<T, ErrorData>;
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub enum SystemNotificationType {
@@ -122,6 +127,135 @@ pub struct TokenState {
 pub enum ToolCallResult<T> {
     Success { value: T },
     Error { error: String },
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct ToolRequest {
+    pub id: String,
+    #[serde(with = "tool_result_serde")]
+    #[schema(value_type = Object)]
+    pub tool_call: ToolResult<CallToolRequestParams>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[schema(value_type = Object)]
+    pub metadata: Option<MessageProviderMetadata>,
+    #[serde(rename = "_meta", skip_serializing_if = "Option::is_none")]
+    #[schema(value_type = Object)]
+    pub tool_meta: Option<serde_json::Value>,
+}
+
+impl ToolRequest {
+    pub fn to_readable_string(&self) -> String {
+        match &self.tool_call {
+            Ok(tool_call) => {
+                format!(
+                    "Tool: {}, Args: {}",
+                    tool_call.name,
+                    serde_json::to_string_pretty(&tool_call.arguments)
+                        .unwrap_or_else(|_| "<<invalid json>>".to_string())
+                )
+            }
+            Err(e) => format!("Invalid tool call: {}", e),
+        }
+    }
+
+    pub fn is_externally_dispatched(&self) -> bool {
+        self.tool_meta
+            .as_ref()
+            .and_then(|v| v.get(TOOL_META_EXTERNAL_DISPATCH_KEY))
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false)
+    }
+
+    pub fn persisted_title(&self) -> Option<&str> {
+        self.tool_meta
+            .as_ref()
+            .and_then(|v| v.get(TOOL_META_TITLE_KEY))
+            .and_then(|v| v.as_str())
+    }
+
+    pub fn persisted_chain_summary(&self) -> Option<PersistedChainSummary> {
+        let obj = self
+            .tool_meta
+            .as_ref()
+            .and_then(|v| v.get(TOOL_META_CHAIN_SUMMARY_KEY))?;
+        let summary = obj.get("summary").and_then(|v| v.as_str())?.to_string();
+        let count = obj.get("count").and_then(|v| v.as_u64())?;
+        if count == 0 {
+            return None;
+        }
+        Some(PersistedChainSummary {
+            summary,
+            count: count as usize,
+        })
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct PersistedChainSummary {
+    pub summary: String,
+    pub count: usize,
+}
+
+pub const TOOL_META_EXTERNAL_DISPATCH_KEY: &str = "goose.external_dispatch";
+pub const TOOL_META_TITLE_KEY: &str = "goose.toolSummary.title";
+pub const TOOL_META_CHAIN_SUMMARY_KEY: &str = "goose.toolChain.summary";
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct ToolResponse {
+    pub id: String,
+    #[serde(with = "tool_result_serde::call_tool_result")]
+    #[schema(value_type = Object)]
+    pub tool_result: ToolResult<CallToolResult>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[schema(value_type = Object)]
+    pub metadata: Option<MessageProviderMetadata>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct ToolConfirmationRequest {
+    pub id: String,
+    pub tool_name: String,
+    pub arguments: JsonObject,
+    pub prompt: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct FrontendToolRequest {
+    pub id: String,
+    #[serde(with = "tool_result_serde")]
+    #[schema(value_type = Object)]
+    pub tool_call: ToolResult<CallToolRequestParams>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ToSchema)]
+#[serde(tag = "actionType", rename_all = "camelCase")]
+pub enum ActionRequiredData {
+    #[serde(rename_all = "camelCase")]
+    ToolConfirmation {
+        id: String,
+        tool_name: String,
+        arguments: JsonObject,
+        prompt: Option<String>,
+    },
+    Elicitation {
+        id: String,
+        message: String,
+        requested_schema: serde_json::Value,
+    },
+    ElicitationResponse {
+        id: String,
+        user_data: serde_json::Value,
+    },
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct ActionRequired {
+    pub data: ActionRequiredData,
 }
 
 impl MessageMetadata {
@@ -651,6 +785,201 @@ fn openai_reasoning_efforts_for_model(model_name: &str) -> &'static [&'static st
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn make_tool_request(meta: Option<serde_json::Value>) -> ToolRequest {
+        ToolRequest {
+            id: "id-1".to_string(),
+            tool_call: Ok(CallToolRequestParams::new("test_tool")),
+            metadata: None,
+            tool_meta: meta,
+        }
+    }
+
+    #[test]
+    fn tool_request_deserializes_legacy_value_arguments() {
+        struct TestCase {
+            name: &'static str,
+            arguments_json: &'static str,
+            expected: Option<Value>,
+        }
+
+        let test_cases = [
+            TestCase {
+                name: "string",
+                arguments_json: r#""string_argument""#,
+                expected: Some(serde_json::json!({"value": "string_argument"})),
+            },
+            TestCase {
+                name: "array",
+                arguments_json: r#"["a", "b", "c"]"#,
+                expected: Some(serde_json::json!({"value": ["a", "b", "c"]})),
+            },
+            TestCase {
+                name: "number",
+                arguments_json: "42",
+                expected: Some(serde_json::json!({"value": 42})),
+            },
+            TestCase {
+                name: "null",
+                arguments_json: "null",
+                expected: None,
+            },
+            TestCase {
+                name: "object",
+                arguments_json: r#"{"key": "value", "number": 123}"#,
+                expected: Some(serde_json::json!({"key": "value", "number": 123})),
+            },
+        ];
+
+        for tc in test_cases {
+            let json = format!(
+                r#"{{
+                    "id": "tool123",
+                    "toolCall": {{
+                        "status": "success",
+                        "value": {{
+                            "name": "test_tool",
+                            "arguments": {}
+                        }}
+                    }}
+                }}"#,
+                tc.arguments_json
+            );
+
+            let request: ToolRequest = serde_json::from_str(&json).unwrap();
+            let tool_call = request.tool_call.unwrap();
+
+            match (&tool_call.arguments, &tc.expected) {
+                (None, None) => {}
+                (Some(args), Some(expected)) => {
+                    let args_value = serde_json::to_value(args).unwrap();
+                    assert_eq!(&args_value, expected, "{}: arguments mismatch", tc.name);
+                }
+                (actual, expected) => {
+                    panic!("{}: expected {:?}, got {:?}", tc.name, expected, actual);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn tool_response_deserializes_legacy_content_vec() {
+        let json = r#"{
+            "id": "tool123",
+            "toolResult": {
+                "status": "success",
+                "value": [
+                    {
+                        "type": "text",
+                        "text": "Tool output text"
+                    }
+                ]
+            }
+        }"#;
+
+        let response: ToolResponse = serde_json::from_str(json).unwrap();
+        assert_eq!(response.id, "tool123");
+        let result = response.tool_result.unwrap();
+        assert_eq!(result.content.len(), 1);
+        assert_eq!(
+            result.content[0].as_text().unwrap().text,
+            "Tool output text"
+        );
+    }
+
+    #[test]
+    fn tool_response_deserializes_call_tool_result() {
+        let json = r#"{
+            "id": "tool456",
+            "toolResult": {
+                "status": "success",
+                "value": {
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": "New format output"
+                        }
+                    ],
+                    "isError": false
+                }
+            }
+        }"#;
+
+        let response: ToolResponse = serde_json::from_str(json).unwrap();
+        assert_eq!(response.id, "tool456");
+        let result = response.tool_result.unwrap();
+        assert_eq!(result.content.len(), 1);
+        assert_eq!(
+            result.content[0].as_text().unwrap().text,
+            "New format output"
+        );
+    }
+
+    #[test]
+    fn tool_request_persisted_metadata_helpers() {
+        let req = make_tool_request(None);
+        assert_eq!(req.persisted_title(), None);
+        assert!(req.persisted_chain_summary().is_none());
+
+        let meta = serde_json::json!({
+            TOOL_META_EXTERNAL_DISPATCH_KEY: true,
+            TOOL_META_TITLE_KEY: "running commands",
+            TOOL_META_CHAIN_SUMMARY_KEY: {
+                "summary": "applied dark mode polish",
+                "count": 4,
+            },
+        });
+        let req = make_tool_request(Some(meta));
+        assert!(req.is_externally_dispatched());
+        assert_eq!(req.persisted_title(), Some("running commands"));
+        let summary = req.persisted_chain_summary().expect("summary present");
+        assert_eq!(summary.summary, "applied dark mode polish");
+        assert_eq!(summary.count, 4);
+
+        let req_zero = make_tool_request(Some(serde_json::json!({
+            TOOL_META_CHAIN_SUMMARY_KEY: { "summary": "x", "count": 0 },
+        })));
+        assert!(req_zero.persisted_chain_summary().is_none());
+
+        let req_no_summary = make_tool_request(Some(serde_json::json!({
+            TOOL_META_CHAIN_SUMMARY_KEY: { "count": 3 },
+        })));
+        assert!(req_no_summary.persisted_chain_summary().is_none());
+    }
+
+    #[test]
+    fn action_required_round_trips_tool_confirmation_payload() {
+        let mut arguments = JsonObject::new();
+        arguments.insert("path".to_string(), serde_json::json!("/tmp/example.txt"));
+
+        let action_required = ActionRequired {
+            data: ActionRequiredData::ToolConfirmation {
+                id: "call_123".to_string(),
+                tool_name: "developer__shell".to_string(),
+                arguments,
+                prompt: Some("Allow this tool call?".to_string()),
+            },
+        };
+
+        let value = serde_json::to_value(&action_required).unwrap();
+        assert_eq!(
+            value,
+            serde_json::json!({
+                "data": {
+                    "actionType": "toolConfirmation",
+                    "id": "call_123",
+                    "toolName": "developer__shell",
+                    "arguments": {"path": "/tmp/example.txt"},
+                    "prompt": "Allow this tool call?"
+                }
+            })
+        );
+
+        assert_eq!(
+            serde_json::from_value::<ActionRequired>(value).unwrap(),
+            action_required
+        );
+    }
 
     #[test]
     fn openai_responses_model_matches_o_and_gpt5_families() {
