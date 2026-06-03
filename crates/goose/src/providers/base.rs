@@ -510,7 +510,7 @@ pub trait Provider: Send + Sync {
 /// A message stream yields partial text content but complete tool calls, all within the Message object
 /// So a message with text will contain potentially just a word of a longer response, but tool calls
 /// messages will only be yielded once concatenated.
-pub type MessageStream = goose_providers::provider::MessageStream<Message>;
+pub type MessageStream = goose_providers::provider::MessageStream;
 
 pub struct GooseProviderAdapter<'a> {
     provider: &'a dyn Provider,
@@ -524,9 +524,6 @@ impl<'a> GooseProviderAdapter<'a> {
 
 #[async_trait]
 impl goose_providers::provider::Provider for GooseProviderAdapter<'_> {
-    type Message = Message;
-    type Tool = Tool;
-
     fn get_name(&self) -> &str {
         self.provider.get_name()
     }
@@ -536,8 +533,8 @@ impl goose_providers::provider::Provider for GooseProviderAdapter<'_> {
         model_config: &ModelConfig,
         session_id: &str,
         system: &str,
-        messages: &[Self::Message],
-        tools: &[Self::Tool],
+        messages: &[Message],
+        tools: &[Tool],
     ) -> Result<MessageStream, ProviderError> {
         self.provider
             .stream(model_config, session_id, system, messages, tools)
