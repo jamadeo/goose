@@ -4,6 +4,7 @@ pub mod canonical;
 pub mod errors;
 pub mod function_name;
 pub mod http_status;
+pub mod json;
 pub mod metadata;
 pub mod models;
 pub mod provider;
