@@ -2,7 +2,7 @@ use crate::conversation::tool_result_serde;
 use crate::mcp_utils::{extract_text_from_resource, ToolResult};
 use crate::utils::sanitize_unicode_tags;
 use chrono::Utc;
-pub use goose_types::{RedactedThinkingContent, ThinkingContent};
+pub use goose_types::{InferenceMetadata, RedactedThinkingContent, ThinkingContent};
 use rmcp::model::{
     AnnotateAble, CallToolRequestParams, CallToolResult, Content, ImageContent, JsonObject,
     PromptMessage, PromptMessageContent, PromptMessageRole, RawContent, RawImageContent,
@@ -635,15 +635,6 @@ impl From<PromptMessage> for Message {
 
         message.with_content(content)
     }
-}
-
-#[derive(ToSchema, Clone, PartialEq, Serialize, Deserialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct InferenceMetadata {
-    pub provider: String,
-    pub requested_model: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub resolved_model: Option<String>,
 }
 
 #[derive(ToSchema, Clone, PartialEq, Serialize, Deserialize, Debug)]
