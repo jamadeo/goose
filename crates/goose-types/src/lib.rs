@@ -106,6 +106,18 @@ pub struct SystemNotificationContent {
     pub data: Option<serde_json::Value>,
 }
 
+#[derive(Debug, Clone, Default, Serialize, Deserialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct TokenState {
+    pub input_tokens: i32,
+    pub output_tokens: i32,
+    pub total_tokens: i32,
+    pub accumulated_input_tokens: i32,
+    pub accumulated_output_tokens: i32,
+    pub accumulated_total_tokens: i32,
+    pub accumulated_cost: Option<f64>,
+}
+
 impl MessageMetadata {
     pub fn agent_only() -> Self {
         Self {
