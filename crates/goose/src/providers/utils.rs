@@ -16,28 +16,13 @@ pub use goose_types::{
 };
 use rmcp::model::{AnnotateAble, ImageContent, RawImageContent};
 use serde::Serialize;
-use serde_json::{json, Value};
+use serde_json::Value;
 use std::io::Read;
 use std::path::Path;
 
 /// Convert an image content into an image json based on format
 pub fn convert_image(image: &ImageContent, image_format: &ImageFormat) -> Value {
-    match image_format {
-        ImageFormat::OpenAi => json!({
-            "type": "image_url",
-            "image_url": {
-                "url": format!("data:{};base64,{}", image.mime_type, image.data)
-            }
-        }),
-        ImageFormat::Anthropic => json!({
-            "type": "image",
-            "source": {
-                "type": "base64",
-                "media_type": image.mime_type,
-                "data": image.data,
-            }
-        }),
-    }
+    goose_providers::image::convert_image(&image.data, &image.mime_type, image_format)
 }
 
 /// Check if a file is actually an image by examining its magic bytes
