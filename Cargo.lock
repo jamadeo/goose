@@ -4790,6 +4790,7 @@ dependencies = [
 name = "goose-types"
 version = "1.37.0"
 dependencies = [
+ "base64 0.22.1",
  "regex",
  "rmcp",
  "serde",
