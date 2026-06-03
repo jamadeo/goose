@@ -6,6 +6,7 @@ use super::openai_compatible::{
     stream_openai_compat,
 };
 use super::retry::ProviderRetry;
+use super::runtime::GooseProviderRuntime;
 use super::utils::RequestLog;
 use crate::config::signup_tetrate::TETRATE_DEFAULT_MODEL;
 use crate::conversation::message::Message;
@@ -14,6 +15,7 @@ use async_trait::async_trait;
 use futures::future::BoxFuture;
 
 use crate::providers::formats::openai::create_request;
+use goose_providers::runtime::ProviderRuntime;
 use goose_types::ModelConfig;
 use rmcp::model::Tool;
 use serde_json::Value;
@@ -47,9 +49,9 @@ pub struct TetrateProvider {
 
 impl TetrateProvider {
     pub async fn from_env(model: ModelConfig) -> Result<Self> {
-        let config = crate::config::Config::global();
-        let api_key: String = config.get_secret("TETRATE_API_KEY")?;
-        let host: String = config
+        let runtime = GooseProviderRuntime;
+        let api_key = runtime.get_secret("TETRATE_API_KEY")?;
+        let host = runtime
             .get_param("TETRATE_HOST")
             .unwrap_or_else(|_| "https://api.router.tetrate.ai".to_string());
 

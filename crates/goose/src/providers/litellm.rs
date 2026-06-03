@@ -13,8 +13,10 @@ use super::embedding::EmbeddingCapable;
 use super::errors::ProviderError;
 use super::openai_compatible::handle_response_openai_compat;
 use super::retry::ProviderRetry;
+use super::runtime::GooseProviderRuntime;
 use super::utils::{get_model, ImageFormat, RequestLog};
 use crate::conversation::message::Message;
+use goose_providers::runtime::ProviderRuntime;
 use goose_types::ModelConfig;
 use rmcp::model::Tool;
 
@@ -36,22 +38,22 @@ pub struct LiteLLMProvider {
 
 impl LiteLLMProvider {
     pub async fn from_env(model: ModelConfig) -> Result<Self> {
-        let config = crate::config::Config::global();
-        let secrets = config
+        let runtime = GooseProviderRuntime;
+        let secrets = runtime
             .get_secrets("LITELLM_API_KEY", &["LITELLM_CUSTOM_HEADERS"])
             .unwrap_or_default();
         let api_key = secrets.get("LITELLM_API_KEY").cloned().unwrap_or_default();
-        let host: String = config
+        let host = runtime
             .get_param("LITELLM_HOST")
             .unwrap_or_else(|_| "https://api.litellm.ai".to_string());
-        let base_path: String = config
+        let base_path = runtime
             .get_param("LITELLM_BASE_PATH")
             .unwrap_or_else(|_| "v1/chat/completions".to_string());
         let custom_headers: Option<HashMap<String, String>> = secrets
             .get("LITELLM_CUSTOM_HEADERS")
             .cloned()
             .map(parse_custom_headers);
-        let timeout_secs: u64 = config
+        let timeout_secs = runtime
             .get_param("LITELLM_TIMEOUT")
             .unwrap_or(DEFAULT_PROVIDER_TIMEOUT_SECS);
 
