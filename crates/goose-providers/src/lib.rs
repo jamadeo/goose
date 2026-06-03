@@ -2,6 +2,7 @@ pub mod api_client;
 pub mod avian;
 pub mod canonical;
 pub mod errors;
+pub mod function_name;
 pub mod http_status;
 pub mod metadata;
 pub mod models;
