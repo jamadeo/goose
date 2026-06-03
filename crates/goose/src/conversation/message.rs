@@ -3,7 +3,8 @@ use crate::mcp_utils::{extract_text_from_resource, ToolResult};
 use crate::utils::sanitize_unicode_tags;
 use chrono::Utc;
 pub use goose_types::{
-    InferenceMetadata, MessageMetadata, RedactedThinkingContent, ThinkingContent,
+    InferenceMetadata, MessageMetadata, MessageProviderMetadata as ProviderMetadata,
+    RedactedThinkingContent, ThinkingContent,
 };
 use rmcp::model::{
     AnnotateAble, CallToolRequestParams, CallToolResult, Content, ImageContent, JsonObject,
@@ -73,10 +74,6 @@ where
 
     Ok(content)
 }
-
-/// Provider-specific metadata for tool requests/responses.
-/// Allows providers to store custom data without polluting the core model.
-pub type ProviderMetadata = serde_json::Map<String, serde_json::Value>;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
