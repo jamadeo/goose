@@ -12,130 +12,22 @@ use anyhow::{anyhow, Error};
 use async_stream::try_stream;
 use chrono;
 use futures::Stream;
+#[cfg(test)]
+use goose_providers::openai::DeltaToolCallFunction;
+pub use goose_providers::openai::OpenAiFormatOptions;
+use goose_providers::openai::{merge_reasoning_text, DeltaContent, StreamingChunk, ToolCallData};
 use goose_types::ModelConfig;
 use rmcp::model::{
     object, AnnotateAble, CallToolRequestParams, Content, ErrorCode, ErrorData, RawContent, Role,
     Tool,
 };
-use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::ops::Deref;
 
-type ToolCallData = HashMap<
-    i32,
-    (
-        String,
-        String,
-        String,
-        Option<serde_json::Map<String, Value>>,
-    ),
->;
-
-fn deserialize_null_default_string<'de, D>(deserializer: D) -> Result<String, D::Error>
-where
-    D: serde::Deserializer<'de>,
-{
-    Ok(Option::<String>::deserialize(deserializer)?.unwrap_or_default())
-}
-
 fn is_reserved_request_param_key(key: &str) -> bool {
     matches!(key, "messages" | "model" | "stream" | "stream_options")
-}
-
-#[derive(Debug, Clone, Copy, Default)]
-pub struct OpenAiFormatOptions {
-    pub preserve_thinking_context: bool,
-}
-
-fn merge_reasoning_text(prefix: &str, suffix: &str) -> String {
-    if prefix.is_empty() {
-        return suffix.to_string();
-    }
-    if suffix.is_empty() {
-        return prefix.to_string();
-    }
-    if suffix.starts_with(prefix) {
-        return suffix.to_string();
-    }
-    if prefix.ends_with(suffix) {
-        return prefix.to_string();
-    }
-
-    format!("{prefix}{suffix}")
-}
-
-#[derive(Serialize, Deserialize, Debug, Default)]
-struct DeltaToolCallFunction {
-    name: Option<String>,
-    #[serde(default, deserialize_with = "deserialize_null_default_string")]
-    arguments: String,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-struct DeltaToolCall {
-    id: Option<String>,
-    function: DeltaToolCallFunction,
-    index: Option<i32>,
-    r#type: Option<String>,
-    #[serde(flatten)]
-    extra: Option<serde_json::Map<String, Value>>,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-#[serde(untagged)]
-enum DeltaContent {
-    String(String),
-    Array(Vec<ContentPart>),
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-struct ContentPart {
-    r#type: String,
-    #[serde(default)]
-    text: Option<String>,
-    #[serde(rename = "thoughtSignature")]
-    thought_signature: Option<String>,
-}
-
-#[derive(Serialize, Deserialize, Debug, Default)]
-struct Delta {
-    #[serde(default)]
-    content: Option<DeltaContent>,
-    role: Option<String>,
-    tool_calls: Option<Vec<DeltaToolCall>>,
-    reasoning_details: Option<Vec<Value>>,
-    reasoning: Option<String>,
-    reasoning_content: Option<String>,
-}
-
-impl Delta {
-    /// Prefer `reasoning_content` (DeepSeek/OpenRouter) over `reasoning`
-    /// (vLLM); some servers (gpt-oss via vLLM) emit both. Skip empty values.
-    fn reasoning_text(&self) -> Option<&str> {
-        self.reasoning_content
-            .as_deref()
-            .filter(|s| !s.is_empty())
-            .or_else(|| self.reasoning.as_deref().filter(|s| !s.is_empty()))
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-struct StreamingChoice {
-    #[serde(default)]
-    delta: Delta,
-    index: Option<i32>,
-    finish_reason: Option<String>,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-struct StreamingChunk {
-    choices: Vec<StreamingChoice>,
-    created: Option<i64>,
-    id: Option<String>,
-    usage: Option<Value>,
-    model: Option<String>,
 }
 
 fn extract_content_and_signature(

@@ -9,31 +9,15 @@ use anyhow::{anyhow, Error};
 use async_stream::try_stream;
 use chrono;
 use futures::Stream;
+pub use goose_providers::openai_responses::{
+    ContentPart, ResponseContentBlock, ResponseMetadata, ResponseOutputItem,
+    ResponseOutputItemInfo, ResponseReasoningInfo, ResponseUsage, ResponsesApiResponse,
+    ResponsesStreamEvent, SummaryText,
+};
 use goose_types::ModelConfig;
 use rmcp::model::{object, CallToolRequestParams, RawContent, Role, Tool};
-use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::ops::Deref;
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct ResponsesApiResponse {
-    pub id: String,
-    pub object: String,
-    pub created_at: i64,
-    pub status: String,
-    pub model: String,
-    pub output: Vec<ResponseOutputItem>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub reasoning: Option<ResponseReasoningInfo>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub usage: Option<ResponseUsage>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-#[serde(tag = "type", rename_all = "snake_case")]
-pub struct SummaryText {
-    pub text: String,
-}
 
 fn reasoning_from_summary(summary: &[SummaryText]) -> Option<MessageContent> {
     let text: String = summary
@@ -46,176 +30,6 @@ fn reasoning_from_summary(summary: &[SummaryText]) -> Option<MessageContent> {
     } else {
         Some(MessageContent::thinking(text, ""))
     }
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(tag = "type")]
-#[serde(rename_all = "snake_case")]
-pub enum ResponseOutputItem {
-    Reasoning {
-        id: String,
-        #[serde(default)]
-        summary: Vec<SummaryText>,
-    },
-    Message {
-        id: String,
-        status: String,
-        role: String,
-        content: Vec<ResponseContentBlock>,
-    },
-    FunctionCall {
-        id: String,
-        status: String,
-        #[serde(skip_serializing_if = "Option::is_none")]
-        call_id: Option<String>,
-        name: String,
-        arguments: String,
-    },
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(tag = "type")]
-#[serde(rename_all = "snake_case")]
-pub enum ResponseContentBlock {
-    OutputText {
-        text: String,
-        #[serde(skip_serializing_if = "Option::is_none")]
-        annotations: Option<Vec<Value>>,
-    },
-    Refusal {
-        refusal: String,
-    },
-    ToolCall {
-        id: String,
-        name: String,
-        input: Value,
-    },
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct ResponseReasoningInfo {
-    pub effort: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub summary: Option<String>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct ResponseUsage {
-    pub input_tokens: i32,
-    pub output_tokens: i32,
-    pub total_tokens: i32,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(tag = "type")]
-#[serde(rename_all = "snake_case")]
-pub enum ResponsesStreamEvent {
-    #[serde(rename = "response.created")]
-    ResponseCreated {
-        sequence_number: i32,
-        response: ResponseMetadata,
-    },
-    #[serde(rename = "response.in_progress")]
-    ResponseInProgress {
-        sequence_number: i32,
-        response: ResponseMetadata,
-    },
-    #[serde(rename = "response.output_item.added")]
-    OutputItemAdded {
-        sequence_number: i32,
-        output_index: i32,
-        item: ResponseOutputItemInfo,
-    },
-    #[serde(rename = "response.content_part.added")]
-    ContentPartAdded {
-        sequence_number: i32,
-        item_id: String,
-        output_index: i32,
-        content_index: i32,
-        part: ContentPart,
-    },
-    #[serde(rename = "response.output_text.delta")]
-    OutputTextDelta {
-        sequence_number: i32,
-        item_id: String,
-        output_index: i32,
-        content_index: i32,
-        delta: String,
-        #[serde(skip_serializing_if = "Option::is_none")]
-        logprobs: Option<Vec<Value>>,
-        #[serde(skip_serializing_if = "Option::is_none")]
-        obfuscation: Option<String>,
-    },
-    #[serde(rename = "response.output_item.done")]
-    OutputItemDone {
-        sequence_number: i32,
-        output_index: i32,
-        item: ResponseOutputItemInfo,
-    },
-    #[serde(rename = "response.content_part.done")]
-    ContentPartDone {
-        sequence_number: i32,
-        item_id: String,
-        output_index: i32,
-        content_index: i32,
-        part: ContentPart,
-    },
-    #[serde(rename = "response.output_text.done")]
-    OutputTextDone {
-        sequence_number: i32,
-        item_id: String,
-        output_index: i32,
-        content_index: i32,
-        text: String,
-        #[serde(skip_serializing_if = "Option::is_none")]
-        logprobs: Option<Vec<Value>>,
-    },
-    #[serde(rename = "response.completed")]
-    ResponseCompleted {
-        sequence_number: i32,
-        response: ResponseMetadata,
-    },
-    #[serde(rename = "response.failed")]
-    ResponseFailed { sequence_number: i32, error: Value },
-    #[serde(rename = "response.function_call_arguments.delta")]
-    FunctionCallArgumentsDelta {
-        sequence_number: i32,
-        item_id: String,
-        output_index: i32,
-        delta: String,
-        #[serde(skip_serializing_if = "Option::is_none")]
-        obfuscation: Option<String>,
-    },
-    #[serde(rename = "response.function_call_arguments.done")]
-    FunctionCallArgumentsDone {
-        sequence_number: i32,
-        item_id: String,
-        output_index: i32,
-        arguments: String,
-    },
-    #[serde(rename = "response.refusal.delta")]
-    RefusalDelta {
-        sequence_number: i32,
-        item_id: String,
-        output_index: i32,
-        content_index: i32,
-        delta: String,
-    },
-    #[serde(rename = "response.refusal.done")]
-    RefusalDone {
-        sequence_number: i32,
-        item_id: String,
-        output_index: i32,
-        content_index: i32,
-        refusal: String,
-    },
-    #[serde(rename = "error")]
-    Error { error: Value },
-    #[serde(rename = "keepalive")]
-    Keepalive {
-        #[serde(default)]
-        sequence_number: Option<i32>,
-    },
 }
 
 fn is_known_responses_stream_event_type(event_type: &str) -> bool {
@@ -265,67 +79,6 @@ fn parse_responses_stream_event(data_line: &str) -> anyhow::Result<Option<Respon
         )
     })?;
     Ok(Some(event))
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct ResponseMetadata {
-    pub id: String,
-    pub object: String,
-    pub created_at: i64,
-    pub status: String,
-    pub model: String,
-    #[serde(default)]
-    pub output: Vec<ResponseOutputItemInfo>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub usage: Option<ResponseUsage>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub reasoning: Option<ResponseReasoningInfo>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-#[serde(tag = "type")]
-#[serde(rename_all = "snake_case")]
-pub enum ResponseOutputItemInfo {
-    Reasoning {
-        id: String,
-        #[serde(default)]
-        summary: Vec<SummaryText>,
-    },
-    Message {
-        id: String,
-        status: String,
-        role: String,
-        content: Vec<ContentPart>,
-    },
-    FunctionCall {
-        id: String,
-        status: String,
-        #[serde(skip_serializing_if = "Option::is_none")]
-        call_id: Option<String>,
-        name: String,
-        arguments: String,
-    },
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-#[serde(tag = "type")]
-#[serde(rename_all = "snake_case")]
-pub enum ContentPart {
-    OutputText {
-        text: String,
-        #[serde(skip_serializing_if = "Option::is_none")]
-        annotations: Option<Vec<Value>>,
-        #[serde(skip_serializing_if = "Option::is_none")]
-        logprobs: Option<Vec<Value>>,
-    },
-    Refusal {
-        refusal: String,
-    },
-    ToolCall {
-        id: String,
-        name: String,
-        arguments: String,
-    },
 }
 
 fn add_message_items(input_items: &mut Vec<Value>, messages: &[Message]) {

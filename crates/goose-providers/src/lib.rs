@@ -10,6 +10,8 @@ pub mod image;
 pub mod json;
 pub mod metadata;
 pub mod models;
+pub mod openai;
+pub mod openai_responses;
 pub mod provider;
 pub mod request_log;
 pub mod retry;
