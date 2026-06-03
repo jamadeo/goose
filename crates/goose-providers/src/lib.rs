@@ -9,3 +9,4 @@ pub mod provider;
 pub mod request_log;
 pub mod retry;
 pub mod runtime;
+pub mod text;
