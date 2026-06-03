@@ -118,6 +118,12 @@ pub struct TokenState {
     pub accumulated_cost: Option<f64>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
+pub enum ToolCallResult<T> {
+    Success { value: T },
+    Error { error: String },
+}
+
 impl MessageMetadata {
     pub fn agent_only() -> Self {
         Self {

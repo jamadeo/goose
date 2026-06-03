@@ -5,7 +5,7 @@ use chrono::Utc;
 pub use goose_types::{
     InferenceMetadata, MessageMetadata, MessageProviderMetadata as ProviderMetadata,
     RedactedThinkingContent, SystemNotificationContent, SystemNotificationType, ThinkingContent,
-    TokenState,
+    TokenState, ToolCallResult,
 };
 use rmcp::model::{
     AnnotateAble, CallToolRequestParams, CallToolResult, Content, ImageContent, JsonObject,
@@ -17,12 +17,6 @@ use std::collections::HashSet;
 use std::fmt;
 use utoipa::ToSchema;
 use uuid::Uuid;
-
-#[derive(ToSchema)]
-pub enum ToolCallResult<T> {
-    Success { value: T },
-    Error { error: String },
-}
 
 /// Custom deserializer for MessageContent that sanitizes Unicode Tags in text content
 fn deserialize_sanitized_content<'de, D>(deserializer: D) -> Result<Vec<MessageContent>, D::Error>
