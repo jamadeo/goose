@@ -1,6 +1,31 @@
 use once_cell::sync::Lazy;
 use regex::Regex;
 
+pub fn filter_extensions_from_system_prompt(system: &str) -> String {
+    let Some(extensions_start) = system.find("# Extensions") else {
+        return system.to_string();
+    };
+
+    let Some(after_extensions) = system.get(extensions_start + 1..) else {
+        return system.to_string();
+    };
+
+    if let Some(next_section_pos) = after_extensions.find("\n# ") {
+        let Some(before) = system.get(..extensions_start) else {
+            return system.to_string();
+        };
+        let Some(after) = system.get(extensions_start + next_section_pos + 1..) else {
+            return system.to_string();
+        };
+        format!("{}{}", before.trim_end(), after)
+    } else {
+        system
+            .get(..extensions_start)
+            .map(|text| text.trim_end().to_string())
+            .unwrap_or_else(|| system.to_string())
+    }
+}
+
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct FilterOut {
     pub content: String,
@@ -269,6 +294,31 @@ fn contains_unquoted_gt(text: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn filters_extensions_section_from_system_prompt() {
+        let system =
+            "# Instructions\nBe helpful.\n\n# Extensions\nTool details.\n\n# Other\nKeep this.";
+        assert_eq!(
+            filter_extensions_from_system_prompt(system),
+            "# Instructions\nBe helpful.\n# Other\nKeep this."
+        );
+    }
+
+    #[test]
+    fn filters_trailing_extensions_section_from_system_prompt() {
+        let system = "# Instructions\nBe helpful.\n\n# Extensions\nTool details.";
+        assert_eq!(
+            filter_extensions_from_system_prompt(system),
+            "# Instructions\nBe helpful."
+        );
+    }
+
+    #[test]
+    fn preserves_system_prompt_without_extensions_section() {
+        let system = "# Instructions\nBe helpful.";
+        assert_eq!(filter_extensions_from_system_prompt(system), system);
+    }
 
     #[test]
     fn split_think_blocks_extracts_inline_reasoning() {
