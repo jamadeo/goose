@@ -1,4 +1,4 @@
-use super::api_client::{ApiClient, AuthMethod};
+use super::api_client::AuthMethod;
 use super::base::{ConfigKey, ProviderDef, ProviderMetadata};
 use super::openai_compatible::OpenAiCompatibleProvider;
 use super::runtime::GooseProviderRuntime;
@@ -64,7 +64,10 @@ impl ProviderDef for XaiProvider {
                 .get_param("XAI_HOST")
                 .unwrap_or_else(|_| XAI_API_HOST.to_string());
 
-            let api_client = ApiClient::new(host, AuthMethod::BearerToken(api_key))?;
+            let api_client = crate::providers::api_client::api_client_from_goose_config(
+                host,
+                AuthMethod::BearerToken(api_key),
+            )?;
 
             Ok(OpenAiCompatibleProvider::new(
                 XAI_PROVIDER_NAME.to_string(),

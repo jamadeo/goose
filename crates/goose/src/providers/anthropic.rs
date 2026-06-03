@@ -80,8 +80,8 @@ impl AnthropicProvider {
             key: api_key,
         };
 
-        let api_client =
-            ApiClient::new(host, auth)?.with_header("anthropic-version", ANTHROPIC_API_VERSION)?;
+        let api_client = crate::providers::api_client::api_client_from_goose_config(host, auth)?
+            .with_header("anthropic-version", ANTHROPIC_API_VERSION)?;
 
         Ok(Self {
             api_client,
@@ -131,8 +131,9 @@ impl AnthropicProvider {
 
         let format_options = Self::format_options_for_provider(config.preserves_thinking);
 
-        let mut api_client = ApiClient::new(config.base_url, auth)?
-            .with_header("anthropic-version", ANTHROPIC_API_VERSION)?;
+        let mut api_client =
+            crate::providers::api_client::api_client_from_goose_config(config.base_url, auth)?
+                .with_header("anthropic-version", ANTHROPIC_API_VERSION)?;
 
         if let Some(headers) = &config.headers {
             let mut header_map = reqwest::header::HeaderMap::new();
@@ -403,10 +404,13 @@ mod tests {
             header_name: "x-api-key".to_string(),
             key: "test-key".to_string(),
         };
-        let api_client = ApiClient::new(server_uri.to_string(), auth)
-            .unwrap()
-            .with_header("anthropic-version", ANTHROPIC_API_VERSION)
-            .unwrap();
+        let api_client = crate::providers::api_client::api_client_from_goose_config(
+            server_uri.to_string(),
+            auth,
+        )
+        .unwrap()
+        .with_header("anthropic-version", ANTHROPIC_API_VERSION)
+        .unwrap();
         AnthropicProvider {
             api_client,
             model: crate::model::model_config_or_fail("claude-test"),

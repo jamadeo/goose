@@ -159,8 +159,11 @@ impl OllamaProvider {
                 .map_err(|_| anyhow::anyhow!("Failed to set default port"))?;
         }
 
-        let api_client =
-            ApiClient::with_timeout(base_url.to_string(), AuthMethod::NoAuth, timeout)?;
+        let api_client = crate::providers::api_client::api_client_from_goose_config_with_timeout(
+            base_url.to_string(),
+            AuthMethod::NoAuth,
+            timeout,
+        )?;
 
         Ok(Self {
             api_client,
@@ -198,7 +201,11 @@ impl OllamaProvider {
         }
 
         let mut api_client =
-            ApiClient::with_timeout(base_url.to_string(), AuthMethod::NoAuth, timeout)?;
+            crate::providers::api_client::api_client_from_goose_config_with_timeout(
+                base_url.to_string(),
+                AuthMethod::NoAuth,
+                timeout,
+            )?;
 
         if let Some(headers) = &config.headers {
             let mut header_map = reqwest::header::HeaderMap::new();

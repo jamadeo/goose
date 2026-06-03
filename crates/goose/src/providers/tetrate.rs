@@ -56,7 +56,7 @@ impl TetrateProvider {
             .unwrap_or_else(|_| "https://api.router.tetrate.ai".to_string());
 
         let auth = AuthMethod::BearerToken(api_key);
-        let api_client = ApiClient::new(host, auth)?
+        let api_client = crate::providers::api_client::api_client_from_goose_config(host, auth)?
             .with_header("HTTP-Referer", "https://goose-docs.ai")?
             .with_header("X-Title", "goose")?;
 

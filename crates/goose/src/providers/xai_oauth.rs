@@ -1,4 +1,4 @@
-use super::api_client::{ApiClient, AuthMethod, AuthProvider};
+use super::api_client::{AuthMethod, AuthProvider};
 use super::base::{ConfigKey, MessageStream, Provider, ProviderDef, ProviderMetadata};
 use super::errors::ProviderError;
 use super::openai_compatible::OpenAiCompatibleProvider;
@@ -787,7 +787,7 @@ impl ProviderDef for XaiOAuthProvider {
 
             let auth_provider = Arc::new(XaiOAuthAuthProvider::new(XaiAuthState::instance()));
             let auth_for_client = Arc::clone(&auth_provider);
-            let api_client = ApiClient::new(
+            let api_client = crate::providers::api_client::api_client_from_goose_config(
                 host,
                 AuthMethod::Custom(Box::new(SharedAuthProvider(auth_for_client))),
             )?;

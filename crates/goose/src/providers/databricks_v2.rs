@@ -116,7 +116,7 @@ impl DatabricksV2Provider {
             token_cache: token_cache.clone(),
         }));
 
-        let api_client = ApiClient::with_timeout(
+        let api_client = crate::providers::api_client::api_client_from_goose_config_with_timeout(
             host,
             auth_method,
             Duration::from_secs(DEFAULT_PROVIDER_TIMEOUT_SECS),

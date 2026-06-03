@@ -82,8 +82,8 @@ impl GoogleProvider {
             key: api_key,
         };
 
-        let api_client =
-            ApiClient::new(host, auth)?.with_header("Content-Type", "application/json")?;
+        let api_client = crate::providers::api_client::api_client_from_goose_config(host, auth)?
+            .with_header("Content-Type", "application/json")?;
 
         Ok(Self {
             api_client,
