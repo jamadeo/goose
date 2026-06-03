@@ -1,8 +1,10 @@
 use super::api_client::{ApiClient, AuthMethod};
 use super::base::{ConfigKey, ProviderDef, ProviderMetadata};
 use super::openai_compatible::OpenAiCompatibleProvider;
+use super::runtime::GooseProviderRuntime;
 use anyhow::Result;
 use futures::future::BoxFuture;
+use goose_providers::runtime::ProviderRuntime;
 use goose_types::ModelConfig;
 
 const AVIAN_PROVIDER_NAME: &str = "avian";
@@ -41,9 +43,9 @@ impl ProviderDef for AvianProvider {
         _extensions: Vec<crate::config::ExtensionConfig>,
     ) -> BoxFuture<'static, Result<OpenAiCompatibleProvider>> {
         Box::pin(async move {
-            let config = crate::config::Config::global();
-            let api_key: String = config.get_secret("AVIAN_API_KEY")?;
-            let host: String = config
+            let runtime = GooseProviderRuntime;
+            let api_key = runtime.get_secret("AVIAN_API_KEY")?;
+            let host = runtime
                 .get_param("AVIAN_HOST")
                 .unwrap_or_else(|_| AVIAN_API_HOST.to_string());
 
