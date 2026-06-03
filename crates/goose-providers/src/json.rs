@@ -1,5 +1,12 @@
 use serde_json::Value;
 
+pub fn get_model(data: &Value) -> String {
+    data.get("model")
+        .and_then(|model| model.as_str())
+        .unwrap_or("Unknown")
+        .to_string()
+}
+
 pub fn unescape_json_values(value: &Value) -> Value {
     let mut cloned = value.clone();
     unescape_json_values_in_place(&mut cloned);
@@ -128,6 +135,13 @@ pub fn json_escape_control_chars_in_string(input: &str) -> String {
 mod tests {
     use super::*;
     use serde_json::json;
+
+    #[test]
+    fn gets_model_name_from_response_payload() {
+        assert_eq!(get_model(&json!({ "model": "gpt-4o" })), "gpt-4o");
+        assert_eq!(get_model(&json!({ "model": 42 })), "Unknown");
+        assert_eq!(get_model(&json!({})), "Unknown");
+    }
 
     #[test]
     fn unescape_json_values_with_object() {
