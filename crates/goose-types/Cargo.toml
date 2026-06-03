@@ -12,6 +12,7 @@ description.workspace = true
 workspace = true
 
 [dependencies]
+base64.workspace = true
 regex = { workspace = true }
 rmcp = { workspace = true, features = ["server"] }
 serde = { workspace = true }
