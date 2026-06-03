@@ -3,18 +3,16 @@ use crate::models;
 use crate::retry::RetryConfig;
 use async_trait::async_trait;
 use futures::Stream;
-use goose_types::{ModelConfig, ModelInfo, ProviderUsage};
+use goose_types::{Message, ModelConfig, ModelInfo, ProviderUsage};
+use rmcp::model::Tool;
 use std::pin::Pin;
 
-pub type MessageStream<Message> = Pin<
+pub type MessageStream = Pin<
     Box<dyn Stream<Item = Result<(Option<Message>, Option<ProviderUsage>), ProviderError>> + Send>,
 >;
 
 #[async_trait]
 pub trait Provider: Send + Sync {
-    type Message: Send + Sync + 'static;
-    type Tool: Send + Sync + 'static;
-
     fn get_name(&self) -> &str;
 
     async fn stream(
@@ -22,9 +20,9 @@ pub trait Provider: Send + Sync {
         model_config: &ModelConfig,
         session_id: &str,
         system: &str,
-        messages: &[Self::Message],
-        tools: &[Self::Tool],
-    ) -> Result<MessageStream<Self::Message>, ProviderError>;
+        messages: &[Message],
+        tools: &[Tool],
+    ) -> Result<MessageStream, ProviderError>;
 
     fn get_model_config(&self) -> ModelConfig;
 
