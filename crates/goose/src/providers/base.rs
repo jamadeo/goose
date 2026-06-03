@@ -17,75 +17,13 @@ pub use goose_types::{ConfigKey, ModelConfig, ModelInfo, ProviderType, ProviderU
 use rmcp::model::Tool;
 
 use once_cell::sync::Lazy;
-use regex::Regex;
 use std::path::PathBuf;
-use std::sync::LazyLock;
 use std::sync::Mutex;
 
 pub use goose_providers::provider::{collect_stream, stream_from_single_message};
-pub use goose_providers::text::{split_think_blocks, FilterOut, ThinkFilter};
-
-fn strip_xml_tags(text: &str) -> String {
-    static BLOCK_RE: LazyLock<Regex> = LazyLock::new(|| {
-        Regex::new(r"(?s)<([a-zA-Z][a-zA-Z0-9_]*)[^>]*>.*?</[a-zA-Z][a-zA-Z0-9_]*>").unwrap()
-    });
-    static TAG_RE: LazyLock<Regex> =
-        LazyLock::new(|| Regex::new(r"</?[a-zA-Z][a-zA-Z0-9_]*[^>]*>").unwrap());
-    let pass1 = BLOCK_RE.replace_all(text, "");
-    TAG_RE.replace_all(&pass1, "").into_owned()
-}
-
-fn extract_short_title(text: &str) -> String {
-    let word_count = text.split_whitespace().count();
-    if word_count <= 8 {
-        return text.to_string();
-    }
-
-    {
-        let mut results = Vec::new();
-        let mut quote_char: Option<char> = None;
-        let mut current = String::new();
-        let mut prev_char: Option<char> = None;
-
-        for ch in text.chars() {
-            match quote_char {
-                None => {
-                    if matches!(ch, '"' | '\'' | '`') {
-                        let after_alnum = prev_char.map(|p| p.is_alphanumeric()).unwrap_or(false);
-                        if !after_alnum {
-                            quote_char = Some(ch);
-                            current.clear();
-                        }
-                    }
-                }
-                Some(q) => {
-                    if ch == q {
-                        let trimmed = current.trim().to_string();
-                        let wc = trimmed.split_whitespace().count();
-                        if (2..=8).contains(&wc) {
-                            results.push(trimmed);
-                        }
-                        quote_char = None;
-                        current.clear();
-                    } else {
-                        current.push(ch);
-                    }
-                }
-            }
-            prev_char = Some(ch);
-        }
-
-        if let Some(title) = results.last() {
-            return title.clone();
-        }
-    }
-
-    if let Some(last) = text.lines().rev().find(|l| !l.trim().is_empty()) {
-        return last.trim().to_string();
-    }
-
-    text.to_string()
-}
+pub use goose_providers::text::{
+    extract_short_title, split_think_blocks, strip_xml_tags, FilterOut, ThinkFilter,
+};
 
 /// A global store for the current model being used, we use this as when a provider returns, it tells us the real model, not an alias
 pub static CURRENT_MODEL: Lazy<Mutex<Option<String>>> = Lazy::new(|| Mutex::new(None));
@@ -621,33 +559,6 @@ mod tests {
     use serde_json::json;
 
     #[test]
-    fn test_strip_xml_tags() {
-        assert_eq!(strip_xml_tags("<think>reasoning</think>answer"), "answer");
-        assert_eq!(strip_xml_tags("before<t>mid</t>after"), "beforeafter");
-        assert_eq!(strip_xml_tags("<a>x</a><b>y</b>z"), "z");
-        assert_eq!(strip_xml_tags("no tags here"), "no tags here");
-        assert_eq!(strip_xml_tags("a < b > c"), "a < b > c");
-        assert_eq!(strip_xml_tags("<think>über</think>ok"), "ok");
-        assert_eq!(strip_xml_tags("<think>日本語</think>hello"), "hello");
-        assert_eq!(strip_xml_tags(""), "");
-        assert_eq!(strip_xml_tags("<>stuff</>"), "<>stuff</>");
-        // attributes
-        assert_eq!(
-            strip_xml_tags(r#"<think class="deep">reasoning</think>answer"#),
-            "answer"
-        );
-        // self-closing tags
-        assert_eq!(strip_xml_tags("<br/>self closing"), "self closing");
-        // orphan closing tags
-        assert_eq!(strip_xml_tags("orphan </think> tag"), "orphan  tag");
-        // multiline content
-        assert_eq!(
-            strip_xml_tags("<think>\nline1\nline2\n</think>result"),
-            "result"
-        );
-    }
-
-    #[test]
     fn test_split_think_blocks_extracts_inline_reasoning() {
         assert_eq!(
             split_think_blocks("<think>x</think>y"),
@@ -917,60 +828,6 @@ mod tests {
 
         assert_eq!(out.content, "before visible");
         assert_eq!(out.thinking, "hidden1  hidden2");
-    }
-
-    #[test]
-    fn test_extract_short_title() {
-        assert_eq!(extract_short_title("List files"), "List files");
-        assert_eq!(
-            extract_short_title(
-                r#"blah blah blah blah blah blah blah blah blah "List files in folder""#
-            ),
-            "List files in folder"
-        );
-        assert_eq!(
-            extract_short_title(
-                "blah blah blah blah blah blah blah blah blah `View current files`"
-            ),
-            "View current files"
-        );
-        assert_eq!(
-            extract_short_title(
-                r#"stuff stuff stuff stuff stuff stuff stuff stuff "Abc title" "Zzz title""#
-            ),
-            "Zzz title"
-        );
-        assert_eq!(
-            extract_short_title(
-                "long long long long long long long long long\nList files in folder"
-            ),
-            "List files in folder"
-        );
-        assert_eq!(
-            extract_short_title(
-                r#"lots of words here and there and more and more "single" final line here"#
-            ),
-            "lots of words here and there and more and more \"single\" final line here"
-        );
-        assert_eq!(extract_short_title("Hello world"), "Hello world");
-        assert_eq!(
-            extract_short_title(
-                r#"1. Analyze the request. 2. The user's message says list files. 3. "List current folder files" fits perfectly. Result: List current folder files"#
-            ),
-            "List current folder files"
-        );
-        assert_eq!(
-            extract_short_title(
-                r#"the user's phrasing is about listing files and the user's intent is clear. "List folder files" is best"#
-            ),
-            "List folder files"
-        );
-        assert_eq!(
-            extract_short_title(
-                "lots of reasoning here about what to call it\nList current folder files"
-            ),
-            "List current folder files"
-        );
     }
 
     #[test]
