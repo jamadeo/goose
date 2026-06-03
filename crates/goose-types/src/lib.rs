@@ -89,6 +89,23 @@ impl Default for MessageMetadata {
 
 pub type MessageProviderMetadata = serde_json::Map<String, serde_json::Value>;
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub enum SystemNotificationType {
+    ThinkingMessage,
+    InlineMessage,
+    CreditsExhausted,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct SystemNotificationContent {
+    pub notification_type: SystemNotificationType,
+    pub msg: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub data: Option<serde_json::Value>,
+}
+
 impl MessageMetadata {
     pub fn agent_only() -> Self {
         Self {

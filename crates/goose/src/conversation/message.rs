@@ -4,7 +4,7 @@ use crate::utils::sanitize_unicode_tags;
 use chrono::Utc;
 pub use goose_types::{
     InferenceMetadata, MessageMetadata, MessageProviderMetadata as ProviderMetadata,
-    RedactedThinkingContent, ThinkingContent,
+    RedactedThinkingContent, SystemNotificationContent, SystemNotificationType, ThinkingContent,
 };
 use rmcp::model::{
     AnnotateAble, CallToolRequestParams, CallToolResult, Content, ImageContent, JsonObject,
@@ -227,23 +227,6 @@ pub struct FrontendToolRequest {
     #[serde(with = "tool_result_serde")]
     #[schema(value_type = Object)]
     pub tool_call: ToolResult<CallToolRequestParams>,
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ToSchema)]
-#[serde(rename_all = "camelCase")]
-pub enum SystemNotificationType {
-    ThinkingMessage,
-    InlineMessage,
-    CreditsExhausted,
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ToSchema)]
-#[serde(rename_all = "camelCase")]
-pub struct SystemNotificationContent {
-    pub notification_type: SystemNotificationType,
-    pub msg: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub data: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ToSchema)]
