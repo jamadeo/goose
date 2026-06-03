@@ -291,6 +291,68 @@ fn contains_unquoted_gt(text: &str) -> bool {
     false
 }
 
+pub fn strip_xml_tags(text: &str) -> String {
+    static BLOCK_RE: Lazy<Regex> = Lazy::new(|| {
+        Regex::new(r"(?s)<([a-zA-Z][a-zA-Z0-9_]*)[^>]*>.*?</[a-zA-Z][a-zA-Z0-9_]*>").unwrap()
+    });
+    static TAG_RE: Lazy<Regex> =
+        Lazy::new(|| Regex::new(r"</?[a-zA-Z][a-zA-Z0-9_]*[^>]*>").unwrap());
+    let pass1 = BLOCK_RE.replace_all(text, "");
+    TAG_RE.replace_all(&pass1, "").into_owned()
+}
+
+pub fn extract_short_title(text: &str) -> String {
+    let word_count = text.split_whitespace().count();
+    if word_count <= 8 {
+        return text.to_string();
+    }
+
+    {
+        let mut results = Vec::new();
+        let mut quote_char: Option<char> = None;
+        let mut current = String::new();
+        let mut prev_char: Option<char> = None;
+
+        for ch in text.chars() {
+            match quote_char {
+                None => {
+                    if matches!(ch, '"' | '\'' | '`') {
+                        let after_alnum = prev_char.map(|p| p.is_alphanumeric()).unwrap_or(false);
+                        if !after_alnum {
+                            quote_char = Some(ch);
+                            current.clear();
+                        }
+                    }
+                }
+                Some(q) => {
+                    if ch == q {
+                        let trimmed = current.trim().to_string();
+                        let wc = trimmed.split_whitespace().count();
+                        if (2..=8).contains(&wc) {
+                            results.push(trimmed);
+                        }
+                        quote_char = None;
+                        current.clear();
+                    } else {
+                        current.push(ch);
+                    }
+                }
+            }
+            prev_char = Some(ch);
+        }
+
+        if let Some(title) = results.last() {
+            return title.clone();
+        }
+    }
+
+    if let Some(last) = text.lines().rev().find(|l| !l.trim().is_empty()) {
+        return last.trim().to_string();
+    }
+
+    text.to_string()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -417,5 +479,82 @@ mod tests {
 
         assert_eq!(out.content, "Visible");
         assert!(out.thinking.is_empty());
+    }
+
+    #[test]
+    fn strip_xml_tags_removes_blocks_and_tags() {
+        assert_eq!(strip_xml_tags("<think>reasoning</think>answer"), "answer");
+        assert_eq!(strip_xml_tags("before<t>mid</t>after"), "beforeafter");
+        assert_eq!(strip_xml_tags("<a>x</a><b>y</b>z"), "z");
+        assert_eq!(strip_xml_tags("no tags here"), "no tags here");
+        assert_eq!(strip_xml_tags("a < b > c"), "a < b > c");
+        assert_eq!(strip_xml_tags("<think>über</think>ok"), "ok");
+        assert_eq!(strip_xml_tags("<think>日本語</think>hello"), "hello");
+        assert_eq!(strip_xml_tags(""), "");
+        assert_eq!(strip_xml_tags("<>stuff</>"), "<>stuff</>");
+        assert_eq!(
+            strip_xml_tags(r#"<think class="deep">reasoning</think>answer"#),
+            "answer"
+        );
+        assert_eq!(strip_xml_tags("<br/>self closing"), "self closing");
+        assert_eq!(strip_xml_tags("orphan </think> tag"), "orphan  tag");
+        assert_eq!(
+            strip_xml_tags("<think>\nline1\nline2\n</think>result"),
+            "result"
+        );
+    }
+
+    #[test]
+    fn extract_short_title_prefers_short_quoted_or_last_line_titles() {
+        assert_eq!(extract_short_title("List files"), "List files");
+        assert_eq!(
+            extract_short_title(
+                r#"blah blah blah blah blah blah blah blah blah "List files in folder""#
+            ),
+            "List files in folder"
+        );
+        assert_eq!(
+            extract_short_title(
+                "blah blah blah blah blah blah blah blah blah `View current files`"
+            ),
+            "View current files"
+        );
+        assert_eq!(
+            extract_short_title(
+                r#"stuff stuff stuff stuff stuff stuff stuff stuff "Abc title" "Zzz title""#
+            ),
+            "Zzz title"
+        );
+        assert_eq!(
+            extract_short_title(
+                "long long long long long long long long long\nList files in folder"
+            ),
+            "List files in folder"
+        );
+        assert_eq!(
+            extract_short_title(
+                r#"lots of words here and there and more and more "single" final line here"#
+            ),
+            "lots of words here and there and more and more \"single\" final line here"
+        );
+        assert_eq!(extract_short_title("Hello world"), "Hello world");
+        assert_eq!(
+            extract_short_title(
+                r#"1. Analyze the request. 2. The user's message says list files. 3. "List current folder files" fits perfectly. Result: List current folder files"#
+            ),
+            "List current folder files"
+        );
+        assert_eq!(
+            extract_short_title(
+                r#"the user's phrasing is about listing files and the user's intent is clear. "List folder files" is best"#
+            ),
+            "List folder files"
+        );
+        assert_eq!(
+            extract_short_title(
+                "lots of reasoning here about what to call it\nList current folder files"
+            ),
+            "List current folder files"
+        );
     }
 }
