@@ -2,7 +2,6 @@ use super::base::Usage;
 use crate::config::paths::Paths;
 use crate::providers::errors::ProviderError;
 use anyhow::Result;
-use base64::Engine;
 pub use goose_providers::function_name::{is_valid_function_name, sanitize_function_name};
 pub use goose_providers::google_response::{handle_response_google_compat, is_google_model};
 pub use goose_providers::image::ImageFormat;
@@ -17,97 +16,20 @@ pub use goose_types::{
 use rmcp::model::{AnnotateAble, ImageContent, RawImageContent};
 use serde::Serialize;
 use serde_json::Value;
-use std::io::Read;
-use std::path::Path;
 
 /// Convert an image content into an image json based on format
 pub fn convert_image(image: &ImageContent, image_format: &ImageFormat) -> Value {
     goose_providers::image::convert_image(&image.data, &image.mime_type, image_format)
 }
 
-/// Check if a file is actually an image by examining its magic bytes
-fn is_image_file(path: &Path) -> bool {
-    if let Ok(mut file) = std::fs::File::open(path) {
-        let mut buffer = [0u8; 8]; // Large enough for most image magic numbers
-        if file.read(&mut buffer).is_ok() {
-            // Check magic numbers for common image formats
-            return match &buffer[0..4] {
-                // PNG: 89 50 4E 47
-                [0x89, 0x50, 0x4E, 0x47] => true,
-                // JPEG: FF D8 FF
-                [0xFF, 0xD8, 0xFF, _] => true,
-                // GIF: 47 49 46 38
-                [0x47, 0x49, 0x46, 0x38] => true,
-                _ => false,
-            };
-        }
-    }
-    false
-}
-
-/// Detect if a string contains a path to an image file
-pub fn detect_image_path(text: &str) -> Option<&str> {
-    // Basic image file extension check
-    let extensions = [".png", ".jpg", ".jpeg"];
-
-    // Find any word that ends with an image extension
-    for word in text.split_whitespace() {
-        if extensions
-            .iter()
-            .any(|ext| word.to_lowercase().ends_with(ext))
-        {
-            let path = Path::new(word);
-            // Check if it's an absolute path and file exists
-            if path.is_absolute() && path.is_file() {
-                // Verify it's actually an image file
-                if is_image_file(path) {
-                    return Some(word);
-                }
-            }
-        }
-    }
-    None
-}
+pub use goose_providers::image::detect_image_path;
 
 /// Convert a local image file to base64 encoded ImageContent
 pub fn load_image_file(path: &str) -> Result<ImageContent, ProviderError> {
-    let path = Path::new(path);
-
-    // Verify it's an image before proceeding
-    if !is_image_file(path) {
-        return Err(ProviderError::RequestFailed(
-            "File is not a valid image".to_string(),
-        ));
-    }
-
-    // Read the file
-    let bytes = std::fs::read(path)
-        .map_err(|e| ProviderError::RequestFailed(format!("Failed to read image file: {}", e)))?;
-
-    // Detect mime type from extension
-    let mime_type = match path.extension().and_then(|e| e.to_str()) {
-        Some(ext) => match ext.to_lowercase().as_str() {
-            "png" => "image/png",
-            "jpg" | "jpeg" => "image/jpeg",
-            _ => {
-                return Err(ProviderError::RequestFailed(
-                    "Unsupported image format".to_string(),
-                ))
-            }
-        },
-        None => {
-            return Err(ProviderError::RequestFailed(
-                "Unknown image format".to_string(),
-            ))
-        }
-    };
-
-    // Convert to base64
-    let data = base64::prelude::BASE64_STANDARD.encode(&bytes);
-
+    let image = goose_providers::image::load_image_file(path)?;
     Ok(RawImageContent {
-        mime_type: mime_type.to_string(),
-        data,
+        mime_type: image.mime_type,
+        data: image.data,
         meta: None,
     }
     .no_annotation())
