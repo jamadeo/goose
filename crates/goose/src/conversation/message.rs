@@ -2,6 +2,7 @@ use crate::conversation::tool_result_serde;
 use crate::mcp_utils::{extract_text_from_resource, ToolResult};
 use crate::utils::sanitize_unicode_tags;
 use chrono::Utc;
+pub use goose_types::{RedactedThinkingContent, ThinkingContent};
 use rmcp::model::{
     AnnotateAble, CallToolRequestParams, CallToolResult, Content, ImageContent, JsonObject,
     PromptMessage, PromptMessageContent, PromptMessageRole, RawContent, RawImageContent,
@@ -218,17 +219,6 @@ pub enum ActionRequiredData {
 #[serde(rename_all = "camelCase")]
 pub struct ActionRequired {
     pub data: ActionRequiredData,
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ToSchema)]
-pub struct ThinkingContent {
-    pub thinking: String,
-    pub signature: String,
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ToSchema)]
-pub struct RedactedThinkingContent {
-    pub data: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ToSchema)]
