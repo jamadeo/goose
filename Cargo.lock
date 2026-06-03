@@ -4679,6 +4679,7 @@ version = "1.37.0"
 dependencies = [
  "anyhow",
  "async-trait",
+ "base64 0.22.1",
  "chrono",
  "fs-err",
  "futures",
@@ -4693,6 +4694,7 @@ dependencies = [
  "sec1",
  "serde",
  "serde_json",
+ "tempfile",
  "test-case",
  "thiserror 1.0.69",
  "tokio",
