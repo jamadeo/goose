@@ -1,22 +1,43 @@
 mod tool_result_serde;
 
 use base64::Engine;
+use chrono::Utc;
 use regex::{Regex, RegexBuilder};
 use rmcp::model::{
     AnnotateAble, CallToolRequestParams, CallToolResult, Content, ErrorData, ImageContent,
-    JsonObject, RawContent, RawImageContent, RawTextContent, Role, TextContent,
+    JsonObject, PromptMessage, PromptMessageContent, PromptMessageRole, RawContent,
+    RawImageContent, RawTextContent, Role, TextContent,
 };
 use serde::de::Deserializer;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fmt;
 use std::ops::{Add, AddAssign};
 use std::str::FromStr;
 use std::sync::OnceLock;
+use unicode_normalization::UnicodeNormalization;
 use utoipa::ToSchema;
+use uuid::Uuid;
 
 pub const DEFAULT_CONTEXT_LIMIT: usize = 128_000;
+
+fn is_in_unicode_tag_range(c: char) -> bool {
+    matches!(c, '\u{E0000}'..='\u{E007F}')
+}
+
+pub fn contains_unicode_tags(text: &str) -> bool {
+    text.chars().any(is_in_unicode_tag_range)
+}
+
+pub fn sanitize_unicode_tags(text: &str) -> String {
+    let normalized: String = text.nfc().collect();
+
+    normalized
+        .chars()
+        .filter(|&c| !is_in_unicode_tag_range(c))
+        .collect()
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "lowercase")]
@@ -649,6 +670,394 @@ pub fn extract_text_from_resource(resource: &rmcp::model::ResourceContents) -> S
             }
             Err(_) => blob.clone(),
         },
+    }
+}
+
+/// Custom deserializer for MessageContent that sanitizes Unicode Tags in text content
+fn deserialize_sanitized_content<'de, D>(deserializer: D) -> Result<Vec<MessageContent>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    use serde::de::Error;
+
+    let raw: Vec<serde_json::Value> = Vec::deserialize(deserializer)?;
+
+    let mut migrated = Vec::with_capacity(raw.len());
+    for item in raw {
+        match item.get("type").and_then(|v| v.as_str()) {
+            // Filter out old "conversationCompacted" messages from pre-14.0
+            Some("conversationCompacted") => {}
+            // Migrate old "reasoning" content to "thinking". Invalid legacy reasoning
+            // blocks are dropped so they don't fail deserialization.
+            Some("reasoning") => {
+                if let Some(text) = item.get("text").and_then(|v| v.as_str()) {
+                    migrated.push(serde_json::json!({
+                        "type": "thinking",
+                        "thinking": text,
+                        "signature": ""
+                    }));
+                }
+            }
+            _ => migrated.push(item),
+        }
+    }
+
+    let mut content: Vec<MessageContent> =
+        serde_json::from_value(serde_json::Value::Array(migrated))
+            .map_err(|e| Error::custom(format!("Failed to deserialize MessageContent: {}", e)))?;
+
+    for message_content in &mut content {
+        if let MessageContent::Text(text_content) = message_content {
+            let original = &text_content.text;
+            let sanitized = sanitize_unicode_tags(original);
+            if *original != sanitized {
+                tracing::info!(
+                    original = %original,
+                    sanitized = %sanitized,
+                    removed_count = original.len() - sanitized.len(),
+                    "Unicode Tags sanitized during Message deserialization"
+                );
+                text_content.text = sanitized;
+            }
+        }
+    }
+
+    Ok(content)
+}
+
+impl From<PromptMessage> for Message {
+    fn from(prompt_message: PromptMessage) -> Self {
+        // Create a new message with the appropriate role
+        let message = match prompt_message.role {
+            PromptMessageRole::User => Message::user(),
+            PromptMessageRole::Assistant => Message::assistant(),
+        };
+
+        // Convert and add the content
+        let content = match prompt_message.content {
+            PromptMessageContent::Text { text } => MessageContent::text(text),
+            PromptMessageContent::Image { image } => {
+                MessageContent::image(image.data.clone(), image.mime_type.clone())
+            }
+            PromptMessageContent::ResourceLink { .. } => MessageContent::text("[Resource link]"),
+            PromptMessageContent::Resource { resource } => {
+                MessageContent::text(extract_text_from_resource(&resource.resource))
+            }
+        };
+
+        message.with_content(content)
+    }
+}
+
+#[derive(ToSchema, Clone, PartialEq, Serialize, Deserialize, Debug)]
+/// A message to or from an LLM
+#[serde(rename_all = "camelCase")]
+pub struct Message {
+    pub id: Option<String>,
+    pub role: Role,
+    pub created: i64,
+    #[serde(deserialize_with = "deserialize_sanitized_content")]
+    pub content: Vec<MessageContent>,
+    pub metadata: MessageMetadata,
+}
+
+impl Message {
+    pub fn new(role: Role, created: i64, content: Vec<MessageContent>) -> Self {
+        Message {
+            id: None,
+            role,
+            created,
+            content,
+            metadata: MessageMetadata::default(),
+        }
+    }
+    pub fn debug(&self) -> String {
+        format!("{:?}", self)
+    }
+
+    pub fn agent_visible_content(&self) -> Message {
+        let filtered_content = self
+            .content
+            .iter()
+            .filter_map(|c| c.filter_for_audience(Role::Assistant))
+            .collect();
+
+        Message {
+            content: filtered_content,
+            ..self.clone()
+        }
+    }
+
+    /// Create a new user message with the current timestamp
+    pub fn user() -> Self {
+        Message {
+            id: None,
+            role: Role::User,
+            created: Utc::now().timestamp(),
+            content: Vec::new(),
+            metadata: MessageMetadata::default(),
+        }
+    }
+
+    /// Create a new assistant message with the current timestamp
+    pub fn assistant() -> Self {
+        Message {
+            id: None,
+            role: Role::Assistant,
+            created: Utc::now().timestamp(),
+            content: Vec::new(),
+            metadata: MessageMetadata::default(),
+        }
+    }
+
+    pub fn with_id<S: Into<String>>(mut self, id: S) -> Self {
+        self.id = Some(id.into());
+        self
+    }
+
+    pub fn with_generated_id(self) -> Self {
+        self.with_id(format!("msg_{}", Uuid::new_v4()))
+    }
+
+    /// Add any MessageContent to the message
+    pub fn with_content(mut self, content: MessageContent) -> Self {
+        self.content.push(content);
+        self
+    }
+
+    /// Add text content to the message
+    pub fn with_text<S: Into<String>>(self, text: S) -> Self {
+        let raw_text = text.into();
+        let sanitized_text = sanitize_unicode_tags(&raw_text);
+
+        self.with_content(MessageContent::Text(
+            RawTextContent {
+                text: sanitized_text,
+                meta: None,
+            }
+            .no_annotation(),
+        ))
+    }
+
+    /// Add image content to the message
+    pub fn with_image<S: Into<String>, T: Into<String>>(self, data: S, mime_type: T) -> Self {
+        self.with_content(MessageContent::image(data, mime_type))
+    }
+
+    /// Add a tool request to the message
+    pub fn with_tool_request<S: Into<String>>(
+        self,
+        id: S,
+        tool_call: ToolResult<CallToolRequestParams>,
+    ) -> Self {
+        self.with_content(MessageContent::tool_request(id, tool_call))
+    }
+
+    pub fn with_tool_request_with_metadata<S: Into<String>>(
+        self,
+        id: S,
+        tool_call: ToolResult<CallToolRequestParams>,
+        metadata: Option<&MessageProviderMetadata>,
+        tool_meta: Option<serde_json::Value>,
+    ) -> Self {
+        self.with_content(MessageContent::ToolRequest(ToolRequest {
+            id: id.into(),
+            tool_call,
+            metadata: metadata.cloned(),
+            tool_meta,
+        }))
+    }
+
+    pub fn with_tool_response<S: Into<String>>(
+        self,
+        id: S,
+        result: ToolResult<CallToolResult>,
+    ) -> Self {
+        self.with_content(MessageContent::tool_response(id, result))
+    }
+
+    pub fn add_tool_response_with_metadata<S: Into<String>>(
+        &mut self,
+        id: S,
+        result: ToolResult<CallToolResult>,
+        metadata: Option<&MessageProviderMetadata>,
+    ) {
+        self.content
+            .push(MessageContent::tool_response_with_metadata(
+                id, result, metadata,
+            ));
+    }
+
+    /// Add an action required message for tool confirmation
+    pub fn with_action_required<S: Into<String>>(
+        self,
+        id: S,
+        tool_name: String,
+        arguments: JsonObject,
+        prompt: Option<String>,
+    ) -> Self {
+        self.with_content(MessageContent::action_required(
+            id, tool_name, arguments, prompt,
+        ))
+    }
+
+    pub fn with_frontend_tool_request<S: Into<String>>(
+        self,
+        id: S,
+        tool_call: ToolResult<CallToolRequestParams>,
+    ) -> Self {
+        self.with_content(MessageContent::frontend_tool_request(id, tool_call))
+    }
+
+    /// Add thinking content to the message
+    pub fn with_thinking<S1: Into<String>, S2: Into<String>>(
+        self,
+        thinking: S1,
+        signature: S2,
+    ) -> Self {
+        self.with_content(MessageContent::thinking(thinking, signature))
+    }
+
+    /// Add redacted thinking content to the message
+    pub fn with_redacted_thinking<S: Into<String>>(self, data: S) -> Self {
+        self.with_content(MessageContent::redacted_thinking(data))
+    }
+
+    /// Get the concatenated text content of the message, separated by newlines
+    pub fn as_concat_text(&self) -> String {
+        self.content
+            .iter()
+            .filter_map(|c| c.as_text())
+            .collect::<Vec<_>>()
+            .join("\n")
+    }
+
+    /// Check if the message is a tool call
+    pub fn is_tool_call(&self) -> bool {
+        self.content
+            .iter()
+            .any(|c| matches!(c, MessageContent::ToolRequest(_)))
+    }
+
+    /// Check if the message is a tool response
+    pub fn is_tool_response(&self) -> bool {
+        self.content
+            .iter()
+            .any(|c| matches!(c, MessageContent::ToolResponse(_)))
+    }
+
+    /// Retrieves all tool `id` from the message
+    pub fn get_tool_ids(&self) -> HashSet<&str> {
+        self.content
+            .iter()
+            .filter_map(|content| match content {
+                MessageContent::ToolRequest(req) => Some(req.id.as_str()),
+                MessageContent::ToolResponse(res) => Some(res.id.as_str()),
+                _ => None,
+            })
+            .collect()
+    }
+
+    /// Retrieves all tool `id` from ToolRequest messages
+    pub fn get_tool_request_ids(&self) -> HashSet<&str> {
+        self.content
+            .iter()
+            .filter_map(|content| {
+                if let MessageContent::ToolRequest(req) = content {
+                    Some(req.id.as_str())
+                } else {
+                    None
+                }
+            })
+            .collect()
+    }
+
+    /// Retrieves all tool `id` from ToolResponse messages
+    pub fn get_tool_response_ids(&self) -> HashSet<&str> {
+        self.content
+            .iter()
+            .filter_map(|content| {
+                if let MessageContent::ToolResponse(res) = content {
+                    Some(res.id.as_str())
+                } else {
+                    None
+                }
+            })
+            .collect()
+    }
+
+    /// Check if the message has only TextContent
+    pub fn has_only_text_content(&self) -> bool {
+        self.content
+            .iter()
+            .all(|c| matches!(c, MessageContent::Text(_)))
+    }
+
+    pub fn with_system_notification<S: Into<String>>(
+        self,
+        notification_type: SystemNotificationType,
+        msg: S,
+    ) -> Self {
+        self.with_content(MessageContent::system_notification(notification_type, msg))
+            .with_metadata(MessageMetadata::user_only())
+    }
+
+    pub fn with_system_notification_with_data<S: Into<String>>(
+        self,
+        notification_type: SystemNotificationType,
+        msg: S,
+        data: serde_json::Value,
+    ) -> Self {
+        self.with_content(MessageContent::system_notification_with_data(
+            notification_type,
+            msg,
+            data,
+        ))
+        .with_metadata(MessageMetadata::user_only())
+    }
+
+    pub fn with_visibility(mut self, user_visible: bool, agent_visible: bool) -> Self {
+        self.metadata.user_visible = user_visible;
+        self.metadata.agent_visible = agent_visible;
+        self
+    }
+
+    pub fn with_metadata(mut self, metadata: MessageMetadata) -> Self {
+        self.metadata = metadata;
+        self
+    }
+
+    pub fn with_inference(mut self, inference: InferenceMetadata) -> Self {
+        self.metadata = self.metadata.with_inference(inference);
+        self
+    }
+
+    pub fn with_inference_if_assistant(self, inference: InferenceMetadata) -> Self {
+        if self.role == Role::Assistant && self.metadata.inference.is_none() {
+            self.with_inference(inference)
+        } else {
+            self
+        }
+    }
+
+    pub fn user_only(mut self) -> Self {
+        self.metadata.user_visible = true;
+        self.metadata.agent_visible = false;
+        self
+    }
+
+    pub fn agent_only(mut self) -> Self {
+        self.metadata.user_visible = false;
+        self.metadata.agent_visible = true;
+        self
+    }
+
+    pub fn is_user_visible(&self) -> bool {
+        self.metadata.user_visible
+    }
+
+    pub fn is_agent_visible(&self) -> bool {
+        self.metadata.agent_visible
     }
 }
 
@@ -1339,6 +1748,104 @@ mod tests {
             TOOL_META_CHAIN_SUMMARY_KEY: { "count": 3 },
         })));
         assert!(req_no_summary.persisted_chain_summary().is_none());
+    }
+
+    #[test]
+    fn message_serializes_text_and_tool_request() {
+        let mut arguments = JsonObject::new();
+        arguments.insert("param".to_string(), serde_json::json!("value"));
+
+        let message = Message::assistant()
+            .with_text("Hello, I'll help you with that.")
+            .with_tool_request(
+                "tool123",
+                Ok(CallToolRequestParams::new("test_tool").with_arguments(arguments)),
+            );
+
+        let value = serde_json::to_value(&message).unwrap();
+
+        assert_eq!(value["role"], "assistant");
+        assert!(value["created"].is_i64());
+        assert_eq!(value["content"][0]["type"], "text");
+        assert_eq!(
+            value["content"][0]["text"],
+            "Hello, I'll help you with that."
+        );
+        assert_eq!(value["content"][1]["type"], "toolRequest");
+        assert_eq!(value["content"][1]["id"], "tool123");
+        assert_eq!(value["content"][1]["toolCall"]["status"], "success");
+        assert_eq!(
+            value["content"][1]["toolCall"]["value"]["name"],
+            "test_tool"
+        );
+        assert_eq!(
+            value["content"][1]["toolCall"]["value"]["arguments"]["param"],
+            "value"
+        );
+    }
+
+    #[test]
+    fn message_deserialization_sanitizes_text_and_migrates_reasoning() {
+        let message: Message = serde_json::from_value(serde_json::json!({
+            "role": "assistant",
+            "created": 1740171566,
+            "content": [
+                {
+                    "type": "text",
+                    "text": "Hello\u{E0041}\u{E0042}\u{E0043}world"
+                },
+                {
+                    "type": "reasoning",
+                    "text": "legacy reasoning"
+                }
+            ],
+            "metadata": { "agentVisible": true, "userVisible": true }
+        }))
+        .unwrap();
+
+        assert_eq!(message.content.len(), 2);
+        assert_eq!(message.as_concat_text(), "Helloworld");
+        let thinking = message.content[1].as_thinking().unwrap();
+        assert_eq!(thinking.thinking, "legacy reasoning");
+        assert_eq!(thinking.signature, "");
+    }
+
+    #[test]
+    fn message_agent_visible_content_filters_audience() {
+        let message = Message::assistant()
+            .with_content(MessageContent::Text(
+                RawTextContent {
+                    text: "assistant only".to_string(),
+                    meta: None,
+                }
+                .with_audience(vec![Role::Assistant]),
+            ))
+            .with_content(MessageContent::Text(
+                RawTextContent {
+                    text: "user only".to_string(),
+                    meta: None,
+                }
+                .with_audience(vec![Role::User]),
+            ))
+            .with_thinking("provider reasoning", "sig");
+
+        let provider_message = message.agent_visible_content();
+        assert_eq!(provider_message.content.len(), 2);
+        assert_eq!(
+            provider_message.content[0].as_text(),
+            Some("assistant only")
+        );
+        assert!(matches!(
+            provider_message.content[1],
+            MessageContent::Thinking(_)
+        ));
+    }
+
+    #[test]
+    fn message_generated_ids_use_msg_prefix() {
+        let message = Message::user().with_generated_id();
+        let id = message.id.expect("generated id");
+        assert!(id.starts_with("msg_"));
     }
 
     #[test]
