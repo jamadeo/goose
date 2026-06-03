@@ -19,6 +19,7 @@ native-tls = ["reqwest/native-tls", "dep:pem", "dep:pkcs1", "dep:pkcs8", "dep:se
 [dependencies]
 async-trait = { workspace = true }
 anyhow = { workspace = true }
+goose-types = { path = "../goose-types", default-features = false }
 url = { workspace = true }
 tracing = { workspace = true }
 thiserror = { workspace = true }
