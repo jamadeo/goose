@@ -4680,6 +4680,7 @@ dependencies = [
  "anyhow",
  "async-trait",
  "chrono",
+ "goose-types",
  "once_cell",
  "pem",
  "pkcs1",

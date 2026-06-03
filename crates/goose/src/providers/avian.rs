@@ -1,22 +1,10 @@
-use super::api_client::AuthMethod;
-use super::base::{ConfigKey, ProviderDef, ProviderMetadata};
+use super::api_client::tls_config_from_goose_config;
+use super::base::{ProviderDef, ProviderMetadata};
 use super::openai_compatible::OpenAiCompatibleProvider;
 use super::runtime::GooseProviderRuntime;
 use anyhow::Result;
 use futures::future::BoxFuture;
-use goose_providers::runtime::ProviderRuntime;
 use goose_types::ModelConfig;
-
-const AVIAN_PROVIDER_NAME: &str = "avian";
-pub const AVIAN_API_HOST: &str = "https://api.avian.io/v1";
-pub const AVIAN_DEFAULT_MODEL: &str = "deepseek/deepseek-v3.2";
-pub const AVIAN_KNOWN_MODELS: &[&str] = &[
-    "deepseek/deepseek-v3.2",
-    "moonshotai/kimi-k2.5",
-    "z-ai/glm-5",
-    "minimax/minimax-m2.5",
-];
-pub const AVIAN_DOC_URL: &str = "https://avian.io/docs";
 
 pub struct AvianProvider;
 
@@ -25,16 +13,13 @@ impl ProviderDef for AvianProvider {
 
     fn metadata() -> ProviderMetadata {
         ProviderMetadata::new(
-            AVIAN_PROVIDER_NAME,
-            "Avian",
-            "Cost-effective inference API with DeepSeek, Kimi, GLM, and MiniMax models",
-            AVIAN_DEFAULT_MODEL,
-            AVIAN_KNOWN_MODELS.to_vec(),
-            AVIAN_DOC_URL,
-            vec![
-                ConfigKey::new("AVIAN_API_KEY", true, true, None, true),
-                ConfigKey::new("AVIAN_HOST", false, false, Some(AVIAN_API_HOST), false),
-            ],
+            goose_providers::avian::AVIAN_PROVIDER_NAME,
+            goose_providers::avian::AVIAN_DISPLAY_NAME,
+            goose_providers::avian::AVIAN_DESCRIPTION,
+            goose_providers::avian::AVIAN_DEFAULT_MODEL,
+            goose_providers::avian::AVIAN_KNOWN_MODELS.to_vec(),
+            goose_providers::avian::AVIAN_DOC_URL,
+            goose_providers::avian::config_keys(),
         )
     }
 
@@ -44,18 +29,11 @@ impl ProviderDef for AvianProvider {
     ) -> BoxFuture<'static, Result<OpenAiCompatibleProvider>> {
         Box::pin(async move {
             let runtime = GooseProviderRuntime;
-            let api_key = runtime.get_secret("AVIAN_API_KEY")?;
-            let host = runtime
-                .get_param("AVIAN_HOST")
-                .unwrap_or_else(|_| AVIAN_API_HOST.to_string());
-
-            let api_client = crate::providers::api_client::api_client_from_goose_config(
-                host,
-                AuthMethod::BearerToken(api_key),
-            )?;
+            let api_client =
+                goose_providers::avian::api_client(&runtime, tls_config_from_goose_config()?)?;
 
             Ok(OpenAiCompatibleProvider::new(
-                AVIAN_PROVIDER_NAME.to_string(),
+                goose_providers::avian::AVIAN_PROVIDER_NAME.to_string(),
                 api_client,
                 model,
                 String::new(),
