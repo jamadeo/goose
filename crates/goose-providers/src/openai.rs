@@ -5,7 +5,7 @@ use anyhow::anyhow;
 use async_stream::try_stream;
 use futures::Stream;
 use goose_types::{Message, MessageContent, MessageProviderMetadata, ProviderUsage, Usage};
-use rmcp::model::{object, CallToolRequestParams, ErrorCode, ErrorData, Role};
+use rmcp::model::{object, CallToolRequestParams, ErrorCode, ErrorData, Role, Tool};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::borrow::Cow;
@@ -575,6 +575,132 @@ where
     }
 }
 
+pub fn is_reserved_request_param_key(key: &str) -> bool {
+    matches!(key, "messages" | "model" | "stream" | "stream_options")
+}
+
+pub fn format_tools(tools: &[Tool]) -> anyhow::Result<Vec<Value>> {
+    let mut tool_names = std::collections::HashSet::new();
+    let mut result = Vec::new();
+
+    for tool in tools {
+        if !tool_names.insert(&tool.name) {
+            return Err(anyhow!("Duplicate tool name: {}", tool.name));
+        }
+
+        result.push(json!({
+            "type": "function",
+            "function": {
+                "name": tool.name,
+                "description": tool.description,
+                "parameters": tool.input_schema,
+            }
+        }));
+    }
+
+    Ok(result)
+}
+
+pub fn validate_tool_schemas(tools: &mut [Value]) {
+    for tool in tools.iter_mut() {
+        if let Some(function) = tool.get_mut("function") {
+            if let Some(parameters) = function.get_mut("parameters") {
+                if parameters.is_object() {
+                    ensure_valid_json_schema(parameters);
+                }
+            }
+        }
+    }
+}
+
+/// Ensures that the given JSON value follows the expected JSON Schema structure.
+fn ensure_valid_json_schema(schema: &mut Value) {
+    if let Some(params_obj) = schema.as_object_mut() {
+        // Check if this is meant to be an object type schema
+        let is_object_type = params_obj
+            .get("type")
+            .and_then(|t| t.as_str())
+            .is_none_or(|t| t == "object"); // Default to true if no type is specified
+
+        // Only apply full schema validation to object types
+        if is_object_type {
+            // Ensure required fields exist with default values
+            params_obj.entry("properties").or_insert_with(|| json!({}));
+            params_obj.entry("required").or_insert_with(|| json!([]));
+            params_obj.entry("type").or_insert_with(|| json!("object"));
+
+            // Recursively validate properties if it exists
+            if let Some(properties) = params_obj.get_mut("properties") {
+                if let Some(properties_obj) = properties.as_object_mut() {
+                    for (_key, prop) in properties_obj.iter_mut() {
+                        normalize_nullable(prop);
+                        if prop.is_object()
+                            && prop.get("type").and_then(|t| t.as_str()) == Some("object")
+                        {
+                            ensure_valid_json_schema(prop);
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// Normalizes nullable type representations that some providers (e.g. Vertex Gemini via Bifrost)
+/// don't support:
+/// - `"type": ["integer", "null"]` → `"type": "integer"` (drops the null variant)
+/// - `"anyOf": [T, {"type": "null"}]` → T (unwraps to the non-null schema)
+///
+/// Optional-ness is already conveyed by the field being absent from `required`.
+fn normalize_nullable(schema: &mut Value) {
+    let Some(obj) = schema.as_object_mut() else {
+        return;
+    };
+
+    // Handle type: ["T", "null"] array form (schemars 1.x style for nullable primitives)
+    if let Some(type_val) = obj.get("type").cloned() {
+        if let Some(types) = type_val.as_array() {
+            let non_null: Vec<&Value> = types
+                .iter()
+                .filter(|t| t.as_str() != Some("null"))
+                .collect();
+            if non_null.len() == 1 {
+                let scalar = non_null[0].clone();
+                obj.insert("type".to_string(), scalar);
+                return;
+            }
+        }
+    }
+
+    // Handle anyOf: [T, {type: "null"}] form — merge the non-null variant's fields
+    // into the current object (preserving sibling keys like "description" or "default")
+    // rather than replacing the whole schema.
+    if let Some(any_of) = obj.remove("anyOf") {
+        if let Some(variants) = any_of.as_array() {
+            if variants.len() == 2 {
+                let is_null = |v: &Value| v.get("type").and_then(|t| t.as_str()) == Some("null");
+                let non_null = if is_null(&variants[0]) {
+                    Some(&variants[1])
+                } else if is_null(&variants[1]) {
+                    Some(&variants[0])
+                } else {
+                    None
+                };
+                if let Some(replacement) = non_null {
+                    if let Some(replacement_obj) = replacement.as_object() {
+                        for (k, v) in replacement_obj {
+                            obj.entry(k.clone()).or_insert(v.clone());
+                        }
+                        return;
+                    }
+                }
+            }
+        }
+        // Put it back if we couldn't simplify
+        obj.insert("anyOf".to_string(), any_of);
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -614,6 +740,55 @@ mod tests {
         assert_eq!(usage.total_tokens, Some(105));
         assert_eq!(usage.cache_read_input_tokens, Some(60));
         assert_eq!(usage.cache_write_input_tokens, Some(10));
+    }
+
+    #[test]
+    fn format_tools_rejects_duplicates() {
+        let tool1 = Tool::new(
+            "test_tool",
+            "Test tool",
+            json!({"type":"object"}).as_object().unwrap().clone(),
+        );
+        let tool2 = Tool::new(
+            "test_tool",
+            "Test tool",
+            json!({"type":"object"}).as_object().unwrap().clone(),
+        );
+
+        let error = format_tools(&[tool1, tool2]).unwrap_err();
+        assert!(error.to_string().contains("Duplicate tool name"));
+    }
+
+    #[test]
+    fn validate_tool_schemas_normalizes_nullable_fields() {
+        let mut tools = vec![json!({
+            "type": "function",
+            "function": {
+                "name": "shell",
+                "description": "run shell",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "command": { "type": "string" },
+                        "timeout_secs": {
+                            "description": "timeout in seconds",
+                            "anyOf": [
+                                { "type": "integer", "format": "uint64", "minimum": 0 },
+                                { "type": "null" }
+                            ]
+                        }
+                    },
+                    "required": ["command"]
+                }
+            }
+        })];
+
+        validate_tool_schemas(&mut tools);
+        let timeout_schema = &tools[0]["function"]["parameters"]["properties"]["timeout_secs"];
+        assert_eq!(timeout_schema["type"], "integer");
+        assert_eq!(timeout_schema["format"], "uint64");
+        assert_eq!(timeout_schema["description"], "timeout in seconds");
+        assert!(timeout_schema.get("anyOf").is_none());
     }
 
     #[tokio::test]
