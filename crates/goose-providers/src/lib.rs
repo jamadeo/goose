@@ -1,6 +1,7 @@
 pub mod api_client;
 pub mod avian;
 pub mod canonical;
+pub mod cli;
 pub mod errors;
 pub mod function_name;
 pub mod google_response;
