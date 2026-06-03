@@ -5,6 +5,9 @@ use crate::providers::errors::ProviderError;
 use anyhow::Result;
 use base64::Engine;
 pub use goose_providers::function_name::{is_valid_function_name, sanitize_function_name};
+pub use goose_providers::json::{
+    json_escape_control_chars_in_string, safely_parse_json, unescape_json_values,
+};
 use goose_types::ModelConfig;
 pub use goose_types::{
     extract_reasoning_effort, is_openai_responses_model, openai_reasoning_effort_for_thinking,
@@ -294,41 +297,6 @@ pub fn load_image_file(path: &str) -> Result<ImageContent, ProviderError> {
     .no_annotation())
 }
 
-pub fn unescape_json_values(value: &Value) -> Value {
-    let mut cloned = value.clone();
-    unescape_json_values_in_place(&mut cloned);
-    cloned
-}
-
-fn unescape_json_values_in_place(value: &mut Value) {
-    match value {
-        Value::Object(map) => {
-            for v in map.values_mut() {
-                unescape_json_values_in_place(v);
-            }
-        }
-        Value::Array(arr) => {
-            for v in arr.iter_mut() {
-                unescape_json_values_in_place(v);
-            }
-        }
-        Value::String(s) => {
-            if s.contains('\\') {
-                *s = s
-                    .replace("\\\\n", "\n")
-                    .replace("\\\\t", "\t")
-                    .replace("\\\\r", "\r")
-                    .replace("\\\\\"", "\"")
-                    .replace("\\n", "\n")
-                    .replace("\\t", "\t")
-                    .replace("\\r", "\r")
-                    .replace("\\\"", "\"");
-            }
-        }
-        _ => {}
-    }
-}
-
 pub use goose_providers::request_log::LOGS_TO_KEEP;
 
 pub struct RequestLog(goose_providers::request_log::RequestLog);
@@ -358,130 +326,6 @@ impl RequestLog {
     {
         self.0.write(data, usage)
     }
-}
-
-/// Safely parse a JSON string that may contain doubly-encoded or malformed JSON.
-/// This function first attempts to parse the input string as-is. If that fails,
-/// it applies control character escaping and truncated JSON repair and tries again.
-///
-/// This approach preserves valid JSON like `{"key1": "value1",\n"key2": "value"}`
-/// (which contains a literal \n but is perfectly valid JSON) while still fixing
-/// broken JSON like `{"key1": "value1\n","key2": "value"}` (which contains an
-/// unescaped newline character).
-pub fn safely_parse_json(s: &str) -> Result<serde_json::Value, serde_json::Error> {
-    // First, try parsing the string as-is
-    match serde_json::from_str(s) {
-        Ok(value) => Ok(value),
-        Err(_) => {
-            for candidate in [
-                repair_truncated_json(s),
-                json_escape_control_chars_in_string(s),
-            ] {
-                if let Ok(value) = serde_json::from_str(&candidate) {
-                    return Ok(value);
-                }
-            }
-
-            let repaired = repair_truncated_json(&json_escape_control_chars_in_string(s));
-            serde_json::from_str(&repaired)
-        }
-    }
-}
-
-fn repair_truncated_json(s: &str) -> String {
-    let mut repaired = String::with_capacity(s.len() + 8);
-    let mut in_string = false;
-    let mut escape_next = false;
-    let mut closers = Vec::new();
-
-    for c in s.chars() {
-        repaired.push(c);
-
-        if in_string {
-            if escape_next {
-                escape_next = false;
-                continue;
-            }
-
-            match c {
-                '\\' => escape_next = true,
-                '"' => in_string = false,
-                _ => {}
-            }
-            continue;
-        }
-
-        match c {
-            '"' => in_string = true,
-            '{' => closers.push('}'),
-            '[' => closers.push(']'),
-            '}' | ']' => {
-                if closers.last() == Some(&c) {
-                    closers.pop();
-                }
-            }
-            _ => {}
-        }
-    }
-
-    if in_string {
-        if escape_next {
-            repaired.push('\\');
-        }
-        repaired.push('"');
-    }
-
-    while let Some(closer) = closers.pop() {
-        repaired.push(closer);
-    }
-
-    repaired
-}
-
-/// Helper to escape control characters in a string that is supposed to be a JSON document.
-/// This function iterates through the input string `s` and replaces any literal
-/// control characters (U+0000 to U+001F) with their JSON-escaped equivalents
-/// (e.g., '\n' becomes "\\n", '\u0001' becomes "\\u0001").
-///
-/// It does NOT escape quotes (") or backslashes (\) because it assumes `s` is a
-/// full JSON document, and these characters might be structural (e.g., object delimiters,
-/// existing valid escape sequences). The goal is to fix common LLM errors where
-/// control characters are emitted raw into what should be JSON string values,
-/// making the overall JSON structure unparsable.
-///
-/// If the input string `s` has other JSON syntax errors (e.g., an unescaped quote
-/// *within* a string value like `{"key": "string with " quote"}`), this function
-/// will not fix them. It specifically targets unescaped control characters.
-pub fn json_escape_control_chars_in_string(s: &str) -> String {
-    let mut r = String::with_capacity(s.len()); // Pre-allocate for efficiency
-    for c in s.chars() {
-        match c {
-            // ASCII Control characters (U+0000 to U+001F)
-            '\u{0000}'..='\u{001F}' => {
-                match c {
-                    '\u{0008}' => r.push_str("\\b"), // Backspace
-                    '\u{000C}' => r.push_str("\\f"), // Form feed
-                    '\n' => r.push_str("\\n"),       // Line feed
-                    '\r' => r.push_str("\\r"),       // Carriage return
-                    '\t' => r.push_str("\\t"),       // Tab
-                    // Other control characters (e.g., NUL, SOH, VT, etc.)
-                    // that don't have a specific short escape sequence.
-                    _ => {
-                        r.push_str(&format!("\\u{:04x}", c as u32));
-                    }
-                }
-            }
-            // Other characters are passed through.
-            // This includes quotes (") and backslashes (\). If these are part of the
-            // JSON structure (e.g. {"key": "value"}) or part of an already correctly
-            // escaped sequence within a string value (e.g. "string with \\\" quote"),
-            // they are preserved as is. This function does not attempt to fix
-            // malformed quote or backslash usage *within* string values if the LLM
-            // generates them incorrectly (e.g. {"key": "unescaped " quote in string"}).
-            _ => r.push(c),
-        }
-    }
-    r
 }
 
 #[cfg(test)]
