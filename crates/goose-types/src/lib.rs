@@ -68,6 +68,84 @@ pub struct InferenceMetadata {
     pub resolved_model: Option<String>,
 }
 
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct MessageMetadata {
+    pub user_visible: bool,
+    pub agent_visible: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub inference: Option<InferenceMetadata>,
+}
+
+impl Default for MessageMetadata {
+    fn default() -> Self {
+        Self {
+            user_visible: true,
+            agent_visible: true,
+            inference: None,
+        }
+    }
+}
+
+impl MessageMetadata {
+    pub fn agent_only() -> Self {
+        Self {
+            user_visible: false,
+            agent_visible: true,
+            ..Default::default()
+        }
+    }
+
+    pub fn user_only() -> Self {
+        Self {
+            user_visible: true,
+            agent_visible: false,
+            ..Default::default()
+        }
+    }
+
+    pub fn invisible() -> Self {
+        Self {
+            user_visible: false,
+            agent_visible: false,
+            ..Default::default()
+        }
+    }
+
+    pub fn with_agent_invisible(self) -> Self {
+        Self {
+            agent_visible: false,
+            ..self
+        }
+    }
+
+    pub fn with_user_invisible(self) -> Self {
+        Self {
+            user_visible: false,
+            ..self
+        }
+    }
+
+    pub fn with_agent_visible(self) -> Self {
+        Self {
+            agent_visible: true,
+            ..self
+        }
+    }
+
+    pub fn with_user_visible(self) -> Self {
+        Self {
+            user_visible: true,
+            ..self
+        }
+    }
+
+    pub fn with_inference(mut self, inference: InferenceMetadata) -> Self {
+        self.inference = Some(inference);
+        self
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProviderUsage {
     pub model: String,
