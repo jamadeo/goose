@@ -5,6 +5,7 @@ use chrono::Utc;
 pub use goose_types::{
     InferenceMetadata, MessageMetadata, MessageProviderMetadata as ProviderMetadata,
     RedactedThinkingContent, SystemNotificationContent, SystemNotificationType, ThinkingContent,
+    TokenState,
 };
 use rmcp::model::{
     AnnotateAble, CallToolRequestParams, CallToolResult, Content, ImageContent, JsonObject,
@@ -929,18 +930,6 @@ impl Message {
     pub fn is_agent_visible(&self) -> bool {
         self.metadata.agent_visible
     }
-}
-
-#[derive(Debug, Clone, Default, Serialize, Deserialize, ToSchema)]
-#[serde(rename_all = "camelCase")]
-pub struct TokenState {
-    pub input_tokens: i32,
-    pub output_tokens: i32,
-    pub total_tokens: i32,
-    pub accumulated_input_tokens: i32,
-    pub accumulated_output_tokens: i32,
-    pub accumulated_total_tokens: i32,
-    pub accumulated_cost: Option<f64>,
 }
 
 #[cfg(test)]
