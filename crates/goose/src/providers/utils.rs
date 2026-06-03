@@ -4,18 +4,17 @@ use crate::config::paths::Paths;
 use crate::providers::errors::ProviderError;
 use anyhow::Result;
 use base64::Engine;
+pub use goose_providers::function_name::{is_valid_function_name, sanitize_function_name};
 use goose_types::ModelConfig;
 pub use goose_types::{
     extract_reasoning_effort, is_openai_responses_model, openai_reasoning_effort_for_thinking,
 };
-use regex::Regex;
 use reqwest::{Response, StatusCode};
 use rmcp::model::{AnnotateAble, ImageContent, RawImageContent};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::io::Read;
 use std::path::Path;
-use std::sync::OnceLock;
 use std::time::Duration;
 
 #[derive(Debug, Copy, Clone, Serialize, Deserialize)]
@@ -192,18 +191,6 @@ pub async fn handle_response_google_compat(response: Response) -> Result<Value, 
             Err(ProviderError::RequestFailed(format!("Request failed with status {} at {url}", final_status)))
         }
     }
-}
-
-pub fn sanitize_function_name(name: &str) -> String {
-    static RE: OnceLock<Regex> = OnceLock::new();
-    let re = RE.get_or_init(|| Regex::new(r"[^a-zA-Z0-9_-]").unwrap());
-    re.replace_all(name, "_").to_string()
-}
-
-pub fn is_valid_function_name(name: &str) -> bool {
-    static RE: OnceLock<Regex> = OnceLock::new();
-    let re = RE.get_or_init(|| Regex::new(r"^[a-zA-Z0-9_-]+$").unwrap());
-    re.is_match(name)
 }
 
 /// Extract the model name from a JSON object. Common with most providers to have this top level attribute.
