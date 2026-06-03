@@ -3,5 +3,7 @@ pub mod avian;
 pub mod canonical;
 pub mod errors;
 pub mod http_status;
+pub mod provider;
+pub mod request_log;
 pub mod retry;
 pub mod runtime;

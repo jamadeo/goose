@@ -4680,6 +4680,8 @@ dependencies = [
  "anyhow",
  "async-trait",
  "chrono",
+ "fs-err",
+ "futures",
  "goose-types",
  "once_cell",
  "pem",
@@ -4696,6 +4698,7 @@ dependencies = [
  "tokio",
  "tracing",
  "url",
+ "uuid",
 ]
 
 [[package]]
